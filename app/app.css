@@ -7,8 +7,10 @@
 	--color-surface-secondary: #fcfcfc;
 	--color-elevated: #fafafa;
 	--color-tint: #f5f5f5;
-	--color-brand: #046cfe;
-	--color-brand-hover: #1347e5;
+	--color-brand: #4f46e5;
+	--color-brand-hover: #4338ca;
+	--color-brand-tint: #eef2ff;
+	--color-ink: #1b1b1b;
 	--color-ring: rgba(10, 10, 10, 0.1);
 	--color-success: #16a34a;
 	--color-success-tint: #d1fae5;

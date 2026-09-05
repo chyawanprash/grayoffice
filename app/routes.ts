@@ -6,10 +6,9 @@ import {
 } from "@react-router/dev/routes";
 
 export default [
-	layout("routes/layout.tsx", [
-		index("routes/results.tsx"),
-		route("prompts", "routes/prompts.tsx"),
-		route("models", "routes/models.tsx"),
+	index("routes/home.tsx"),
+	route("auth", "routes/auth.tsx"),
+	layout("routes/dashboard-layout.tsx", [
+		route("dashboard", "routes/dashboard.tsx"),
 	]),
-	route("setup", "routes/setup.tsx"),
 ] satisfies RouteConfig;
