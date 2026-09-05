@@ -4,12 +4,9 @@ import { ArrowUpRight } from "@phosphor-icons/react";
 export function Logo({ className = "" }: { className?: string }) {
 	return (
 		<span
-			className={`inline-flex items-center gap-2 font-semibold tracking-tight text-neutral-900 ${className}`}
+			className={`inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-neutral-900 ${className}`}
 		>
-			<span className="grid h-6 w-6 place-items-center rounded-md bg-brand text-white text-[13px] font-bold">
-				g
-			</span>
-			gray<span className="text-neutral-400 font-normal">office</span>
+			Gray<span className="text-neutral-400 font-normal">Office</span>
 		</span>
 	);
 }

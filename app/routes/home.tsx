@@ -88,7 +88,6 @@ export default function Home() {
 			>
 				<div>
 					<span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-surface px-3 py-1 text-xs font-medium text-neutral-600">
-						<Sparkle size={13} weight="fill" className="text-brand" />
 						Internal finance operations, automated
 					</span>
 					<h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight text-neutral-900 sm:text-5xl">
@@ -112,11 +111,6 @@ export default function Home() {
 						>
 							See the workflows
 						</a>
-					</div>
-					<div className="mt-8 flex items-center gap-2 text-xs text-neutral-500">
-						<ShieldCheck size={14} className="text-neutral-400" />
-						SOC 2-ready controls · full audit trail · human-in-the-loop by
-						default
 					</div>
 				</div>
 
