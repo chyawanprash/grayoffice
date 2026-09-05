@@ -22,6 +22,8 @@ app.get("*", (c) => {
 		import.meta.env.MODE,
 	);
 	return requestHandler(c.req.raw, {
+		// hono's ExecutionContext type lags @cloudflare/workers-types v5 (missing
+		// tracing/abort/exports); the runtime object is the real thing.
 		cloudflare: { env: c.env, ctx: c.executionCtx as unknown as ExecutionContext },
 	});
 });
