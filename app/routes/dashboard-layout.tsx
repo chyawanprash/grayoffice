@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router";
+import { Form, NavLink, Outlet } from "react-router";
 import {
 	Bell,
 	ChartLineUp,
@@ -7,10 +7,21 @@ import {
 	Gear,
 	MagnifyingGlass,
 	Receipt,
+	SignOut,
 	ArrowsClockwise,
 	Wallet,
 } from "@phosphor-icons/react";
 import { Logo } from "~/components/brand";
+import type { Route } from "./+types/dashboard-layout";
+import { getUser, logout, requireUserId } from "~/lib/auth.server";
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+	const { DB, SESSION_SECRET } = context.cloudflare.env;
+	const userId = await requireUserId(request, SESSION_SECRET);
+	const user = await getUser(DB, userId);
+	if (!user) throw await logout(request, SESSION_SECRET);
+	return { user };
+}
 
 const NAV = [
 	{ to: "/dashboard", label: "Overview", icon: Gauge, end: true },
@@ -21,7 +32,10 @@ const NAV = [
 	{ to: "/dashboard#tax", label: "GST & jurisdictions", icon: ChartLineUp },
 ];
 
-export default function DashboardLayout() {
+export default function DashboardLayout({
+	loaderData,
+}: Route.ComponentProps) {
+	const { user } = loaderData;
 	return (
 		<div className="flex min-h-screen bg-canvas">
 			<aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-neutral-200 bg-surface p-3 lg:flex">
@@ -69,9 +83,21 @@ export default function DashboardLayout() {
 						>
 							<Bell size={17} />
 						</button>
-						<div className="h-8 w-8 rounded-full bg-brand/15 text-center text-sm font-semibold leading-8 text-brand">
-							A
+						<span className="hidden text-sm text-neutral-600 sm:inline">
+							{user.email}
+						</span>
+						<div className="grid h-8 w-8 place-items-center rounded-full bg-brand/15 text-sm font-semibold uppercase text-brand">
+							{user.email[0]}
 						</div>
+						<Form method="post" action="/logout">
+							<button
+								type="submit"
+								title="Sign out"
+								className="grid h-8 w-8 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-tint hover:text-danger"
+							>
+								<SignOut size={17} />
+							</button>
+						</Form>
 					</div>
 				</header>
 				<main className="flex-1 p-5 lg:p-8">

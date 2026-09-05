@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { ArrowUpRight } from "@phosphor-icons/react";
+import { GithubLogo, LinkedinLogo, XLogo } from "@phosphor-icons/react";
+import { Button } from "~/components/ui/button";
 
 export function Logo({ className = "" }: { className?: string }) {
 	return (
@@ -20,11 +21,11 @@ const NAV = [
 export function SiteNav() {
 	return (
 		<header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-canvas/80 backdrop-blur">
-			<div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-6">
+			<div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-10 px-4 md:px-6">
 				<Link to="/">
 					<Logo />
 				</Link>
-				<nav className="hidden items-center gap-6 text-sm text-neutral-600 md:flex">
+				<nav className="hidden items-center gap-8 text-[15px] font-medium text-neutral-600 md:flex">
 					{NAV.map((n) => (
 						<a
 							key={n.label}
@@ -35,19 +36,18 @@ export function SiteNav() {
 						</a>
 					))}
 				</nav>
-				<div className="ml-auto flex items-center gap-2">
-					<Link
-						to="/auth"
-						className="hidden rounded-md px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 sm:block"
+				<div className="ml-auto flex items-center gap-2.5">
+					<Button
+						render={<Link to="/auth" />}
+						variant="ghost"
+						size="md"
+						className="hidden sm:inline-flex"
 					>
 						Sign in
-					</Link>
-					<Link
-						to="/auth"
-						className="rounded-md bg-brand px-3.5 py-1.5 text-sm font-medium text-white shadow-xs ring-1 ring-brand transition-colors hover:bg-brand-hover"
-					>
+					</Button>
+					<Button render={<Link to="/auth" />} size="md">
 						Get started
-					</Link>
+					</Button>
 				</div>
 			</div>
 		</header>
@@ -56,86 +56,89 @@ export function SiteNav() {
 
 const FOOTER_COLS: { title: string; links: string[] }[] = [
 	{ title: "Product", links: ["Close the books", "Reconciliation", "Invoices", "Cash reports"] },
-	{ title: "Company", links: ["About", "Careers", "Security", "Docs", "Changelog", "Status"] },
-	{ title: "Legal", links: ["Privacy", "Terms", "DPA", "Sub-processors"] },
+	{ title: "Resources", links: ["Documentation", "Changelog", "Status", "Support"] },
+	{ title: "Company", links: ["About", "Careers", "Security", "Contact"] },
 ];
+
+const SOCIALS = [
+	{ label: "LinkedIn", href: "#", Icon: LinkedinLogo },
+	{ label: "X", href: "#", Icon: XLogo },
+	{ label: "GitHub", href: "#", Icon: GithubLogo },
+];
+
+const LEGAL = ["Privacy Policy", "Terms of Service", "Cookies"];
 
 export function SiteFooter() {
 	return (
-		<footer className="relative w-full overflow-hidden border-t border-neutral-200 bg-tint font-sans text-neutral-700">
-			<div className="mx-auto flex max-w-[1400px] flex-col border-x border-dashed border-neutral-300 px-6 pt-20 md:px-12 md:pt-28 lg:px-16">
-				<div className="mb-12 grid grid-cols-1 gap-14 md:mb-16 lg:grid-cols-12 lg:gap-8">
-					<div className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4">
-						<Logo />
-						<p className="max-w-[320px] text-[15px] leading-relaxed text-neutral-600">
-							The agent that runs your close, reconciliation, and cash
-							reporting end to end — exceptions and human review included.
-						</p>
-						<a
-							href="mailto:hello@grayoffice.com"
-							className="group mt-1 inline-flex items-center gap-2 text-[17px] text-neutral-900 transition-colors hover:text-brand"
-						>
-							hello@grayoffice.com
-							<ArrowUpRight
-								size={17}
-								className="text-neutral-400 transition-colors group-hover:text-brand"
-							/>
-						</a>
-					</div>
-					<div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:col-span-7 lg:gap-8 xl:col-span-8">
-						{FOOTER_COLS.map((col) => (
-							<div key={col.title} className="flex flex-col gap-5">
-								<h4 className="font-semibold text-neutral-900">{col.title}</h4>
-								<ul className="flex flex-col gap-3">
-									{col.links.map((l) => (
-										<li key={l}>
-											<a
-												href="/#"
-												className="text-[15px] text-neutral-600 transition-colors hover:text-neutral-900"
-											>
-												{l}
-											</a>
-										</li>
+		<footer className="w-full px-4 py-12 font-sans md:px-6">
+			<div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-neutral-200 bg-tint p-1">
+				<div className="rounded-[1.375rem] bg-surface shadow-sm">
+					<div className="px-8 py-12 md:px-12 md:py-16">
+						<div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-8">
+							<div className="flex flex-col items-start lg:col-span-4">
+								<Logo />
+								<p className="mb-8 mt-6 max-w-sm text-sm leading-relaxed text-neutral-500">
+									The agent that runs your close, reconciliation, and cash
+									reporting end to end — exceptions and human review included.
+								</p>
+								<div className="flex items-center gap-3">
+									{SOCIALS.map(({ label, href, Icon }) => (
+										<a
+											key={label}
+											href={href}
+											aria-label={label}
+											className="grid h-10 w-10 place-items-center rounded-xl bg-tint text-neutral-500 shadow-[inset_0_2px_0_0_rgba(255,255,255,0.6),0_1px_2px_rgba(0,0,0,0.05)] ring-1 ring-neutral-200 transition-colors hover:text-neutral-900"
+										>
+											<Icon size={16} weight="fill" />
+										</a>
 									))}
-								</ul>
+								</div>
 							</div>
-						))}
+
+							<div className="lg:col-span-8">
+								<div className="grid grid-cols-2 gap-8 md:grid-cols-3">
+									{FOOTER_COLS.map((col) => (
+										<div key={col.title} className="flex flex-col gap-4">
+											<h4 className="mb-1 text-sm font-semibold text-neutral-900">
+												{col.title}
+											</h4>
+											<ul className="flex flex-col gap-3">
+												{col.links.map((l) => (
+													<li key={l}>
+														<a
+															href="/#"
+															className="text-sm text-neutral-500 transition-colors hover:text-brand"
+														>
+															{l}
+														</a>
+													</li>
+												))}
+											</ul>
+										</div>
+									))}
+								</div>
+							</div>
+						</div>
 					</div>
-				</div>
 
-				<div className="flex flex-col gap-2 pb-6 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
-					<span>© {new Date().getFullYear()} Gray Office, Inc.</span>
-					<span>Built for accounting, finance & treasury teams.</span>
-				</div>
-
-				{/* oversized wordmark, clipped at the floor */}
-				<div className="pointer-events-none -mb-[1.5%] w-full select-none">
-					<svg
-						viewBox="0 30 800 80"
-						preserveAspectRatio="xMidYMid meet"
-						className="h-auto w-full"
-						aria-hidden
-					>
-						<defs>
-							<linearGradient id="go-watermark" x1="0" y1="0" x2="0" y2="1">
-								<stop offset="0%" stopColor="#c7d2fe" />
-								<stop offset="55%" stopColor="#e0e7ff" />
-								<stop offset="100%" stopColor="#e9d5ff" />
-							</linearGradient>
-						</defs>
-						<text
-							x="0"
-							y="130"
-							textAnchor="start"
-							textLength="100%"
-							lengthAdjust="spacing"
-							fill="url(#go-watermark)"
-							className="font-semibold tracking-tighter"
-							fontSize="140"
-						>
-							Gray Office
-						</text>
-					</svg>
+					<div className="border-t border-neutral-200 bg-tint/60 px-8 py-6 md:px-12">
+						<div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+							<p className="text-sm text-neutral-500">
+								© {new Date().getFullYear()} Gray Office, Inc. All rights
+								reserved.
+							</p>
+							<div className="flex items-center gap-4 text-sm text-neutral-500">
+								{LEGAL.map((l, i) => (
+									<span key={l} className="flex items-center gap-4">
+										{i > 0 && <span className="h-4 w-px bg-neutral-300" />}
+										<a href="/#" className="transition-colors hover:text-neutral-900">
+											{l}
+										</a>
+									</span>
+								))}
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</footer>

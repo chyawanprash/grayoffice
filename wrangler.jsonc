@@ -16,6 +16,14 @@
 			"id": "623729d87586478981a14c15ddfe3764"
 		}
 	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "grayoffice-db",
+			"database_id": "e866ef68-dfbf-45b3-905b-ebcc4bb66f8f",
+			"migrations_dir": "./migrations"
+		}
+	],
 	"queues": {
 		"producers": [
 			{

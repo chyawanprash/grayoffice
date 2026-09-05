@@ -6,3 +6,4 @@ build/
 .backup-vanilla/
 public/_old-*
 worker-configuration.d.ts
+.dev.vars

@@ -3,20 +3,13 @@ import { createRequestHandler } from "react-router";
 import { apiRoutes } from "./api";
 import { queueConsumer } from "./queue";
 
-type Env = {
-	AI: Ai;
-	AEO_KV: KVNamespace;
-	BRAND_VISIBILITY_QUEUE: Queue;
-	TARGET_DOMAIN: string;
-};
-
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env & { TARGET_DOMAIN?: string } }>();
 
 // API routes
 app.route("/api", apiRoutes);
 
-// SSR catch-all — React Router handles everything else
-app.get("*", (c) => {
+// SSR catch-all — React Router handles everything else (GET + form POSTs)
+app.all("*", (c) => {
 	const requestHandler = createRequestHandler(
 		() => import("virtual:react-router/server-build"),
 		import.meta.env.MODE,

@@ -5,6 +5,7 @@ import {
 	Play,
 	TrendUp,
 } from "@phosphor-icons/react";
+import { Button } from "~/components/ui/button";
 
 export function meta() {
 	return [{ title: "Overview — Gray Office" }];
@@ -61,12 +62,9 @@ export default function Dashboard() {
 					<span className="rounded-lg border border-neutral-200 bg-surface px-3 py-1.5 text-sm text-neutral-600">
 						This period
 					</span>
-					<button
-						type="button"
-						className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-sm font-medium text-white ring-1 ring-brand transition-colors hover:bg-brand-hover"
-					>
+					<Button type="button" size="sm">
 						<Play size={14} weight="fill" /> Run close
-					</button>
+					</Button>
 				</div>
 			</div>
 

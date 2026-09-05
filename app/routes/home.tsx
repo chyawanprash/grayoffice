@@ -13,6 +13,7 @@ import {
 import { SiteNav, SiteFooter } from "~/components/brand";
 import { RippleGridCard } from "~/components/ripple-grid/RippleGridCard";
 import { FooterGradient } from "~/components/footer-gradient";
+import { Button } from "~/components/ui/button";
 
 export function meta() {
 	return [
@@ -99,18 +100,12 @@ export default function Home() {
 						reports — exceptions and human review included.
 					</p>
 					<div className="mt-8 flex flex-wrap items-center gap-3">
-						<Link
-							to="/auth"
-							className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-xs ring-1 ring-brand transition-colors hover:bg-brand-hover"
-						>
+						<Button render={<Link to="/auth" />} size="lg">
 							Get started <ArrowRight size={16} weight="bold" />
-						</Link>
-						<a
-							href="#workflows"
-							className="inline-flex items-center gap-2 rounded-lg bg-surface px-5 py-2.5 text-sm font-medium text-neutral-700 ring-1 ring-neutral-950/10 transition-colors hover:bg-tint"
-						>
+						</Button>
+						<Button render={<a href="#workflows" />} variant="outline" size="lg">
 							See the workflows
-						</a>
+						</Button>
 					</div>
 				</div>
 
@@ -201,12 +196,9 @@ export default function Home() {
 								Set up your first workflow in minutes.
 							</div>
 						</div>
-						<Link
-							to="/auth"
-							className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white ring-1 ring-brand transition-colors hover:bg-brand-hover"
-						>
+						<Button render={<Link to="/auth" />} size="lg">
 							Get started <ArrowRight size={16} weight="bold" />
-						</Link>
+						</Button>
 					</div>
 				</div>
 			</section>
