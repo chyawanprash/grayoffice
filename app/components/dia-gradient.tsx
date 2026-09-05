@@ -34,6 +34,7 @@ export function DiaGradient({
 	valley = 0.55,
 	stops = DIA_STOPS,
 	riseMs = 1100,
+	autoReveal = true,
 }: {
 	bars?: number;
 	blur?: number;
@@ -41,14 +42,18 @@ export function DiaGradient({
 	valley?: number;
 	stops?: Stop[];
 	riseMs?: number;
+	/** Play the built-in rise-from-the-floor animation on mount. Turn off when an
+	 * outer element (e.g. a scroll-linked spring) drives the transform instead. */
+	autoReveal?: boolean;
 }) {
-	const [shown, setShown] = useState(false);
+	const [shown, setShown] = useState(!autoReveal);
 	useEffect(() => {
+		if (!autoReveal) return;
 		const id = requestAnimationFrame(() =>
 			requestAnimationFrame(() => setShown(true)),
 		);
 		return () => cancelAnimationFrame(id);
-	}, []);
+	}, [autoReveal]);
 
 	const heights = bellHeights(bars, peak, valley);
 	const colW = VBW / bars;

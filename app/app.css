@@ -36,6 +36,8 @@ body {
 	@apply bg-canvas text-neutral-900 antialiased;
 	font-size: 14px;
 	line-height: 1.43;
+	/* our own rubber-band at the bottom (FooterGradient) — kill the native one */
+	overscroll-behavior-y: none;
 }
 
 /* Dot grid background */

@@ -62,23 +62,63 @@ export default function Auth() {
 	const [otp, setOtp] = useState("");
 
 	return (
-		<div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-6 py-12">
-			<div
-				aria-hidden
-				className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-brand/15 blur-3xl"
-			/>
-			<div className="relative w-full max-w-sm">
-				<Link to="/" className="mb-8 flex justify-center">
-					<Logo className="text-base" />
-				</Link>
+		<div className="flex min-h-screen w-full flex-col bg-surface text-neutral-950 lg:flex-row">
+			{/* Brand panel */}
+			<div className="relative flex min-h-[36vh] w-full flex-col justify-between overflow-hidden bg-brand p-8 md:p-12 lg:min-h-screen lg:w-1/2">
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-0 opacity-[0.14]"
+					style={{
+						backgroundImage:
+							"radial-gradient(circle, #fff 0.7px, transparent 0.7px)",
+						backgroundSize: "22px 22px",
+					}}
+				/>
+				<div
+					aria-hidden
+					className="pointer-events-none absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full bg-white/20 blur-3xl"
+				/>
+				<div
+					aria-hidden
+					className="pointer-events-none absolute -bottom-40 -right-24 h-[26rem] w-[26rem] rounded-full bg-black/20 blur-3xl"
+				/>
 
-				<div className="rounded-2xl border border-neutral-200 bg-surface p-7 shadow-sm">
+				<div className="relative z-10 flex items-center justify-between">
+					<span className="text-lg font-semibold tracking-tight text-white">
+						grayoffice
+					</span>
+					<Link
+						to="/"
+						className="inline-flex items-center gap-1.5 text-sm font-medium text-white/80 transition-colors hover:text-white"
+					>
+						<ArrowLeft size={14} /> Back to site
+					</Link>
+				</div>
+
+				<div className="relative z-10 mt-12 lg:mt-0">
+					<h1 className="mb-4 max-w-md text-4xl font-medium leading-[1.1] tracking-tight text-white sm:text-5xl">
+						Your finance back office, on autopilot.
+					</h1>
+					<p className="max-w-sm text-base leading-relaxed text-white/80 sm:text-lg">
+						Close, reconcile, and report — grayoffice works the queue every day
+						and escalates only what needs you.
+					</p>
+				</div>
+			</div>
+
+			{/* Form panel */}
+			<div className="flex w-full flex-col items-center justify-center p-6 sm:p-12 lg:w-1/2">
+				<div className="w-full max-w-md">
+					<Link to="/" className="mb-8 inline-flex lg:hidden">
+						<Logo className="text-base" />
+					</Link>
+
 					{step === "email" ? (
 						<>
-							<h1 className="text-lg font-semibold text-neutral-900">
+							<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
 								Sign in to grayoffice
 							</h1>
-							<p className="mt-1 text-sm text-neutral-500">
+							<p className="mt-2 text-sm text-neutral-500">
 								Use your work email to continue.
 							</p>
 
@@ -131,10 +171,10 @@ export default function Auth() {
 							>
 								<ArrowLeft size={14} /> Back
 							</button>
-							<h1 className="text-lg font-semibold text-neutral-900">
+							<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
 								Enter your code
 							</h1>
-							<p className="mt-1 text-sm text-neutral-500">
+							<p className="mt-2 text-sm text-neutral-500">
 								We sent a 6-digit code to{" "}
 								<span className="font-medium text-neutral-700">{email}</span>.
 							</p>
@@ -158,11 +198,11 @@ export default function Auth() {
 							</button>
 						</>
 					)}
-				</div>
 
-				<p className="mt-6 text-center text-xs text-neutral-400">
-					By continuing you agree to the Terms and Privacy Policy.
-				</p>
+					<p className="mt-6 text-xs text-neutral-400">
+						By continuing you agree to the Terms and Privacy Policy.
+					</p>
+				</div>
 			</div>
 		</div>
 	);

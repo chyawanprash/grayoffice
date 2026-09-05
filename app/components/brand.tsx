@@ -1,4 +1,6 @@
 import { Link } from "react-router";
+import { motion } from "motion/react";
+import { ArrowUpRight } from "@phosphor-icons/react";
 
 export function Logo({ className = "" }: { className?: string }) {
 	return (
@@ -58,50 +60,101 @@ export function SiteNav() {
 
 const FOOTER_COLS: { title: string; links: string[] }[] = [
 	{ title: "Product", links: ["Close the books", "Reconciliation", "Invoices", "Cash reports"] },
-	{ title: "Company", links: ["About", "Careers", "Security", "Contact"] },
-	{ title: "Resources", links: ["Docs", "Changelog", "Status", "Support"] },
+	{ title: "Company", links: ["About", "Careers", "Security", "Docs", "Changelog", "Status"] },
 	{ title: "Legal", links: ["Privacy", "Terms", "DPA", "Sub-processors"] },
 ];
 
+const fadeUp = {
+	initial: { opacity: 0, filter: "blur(6px)", y: 14 },
+	whileInView: { opacity: 1, filter: "blur(0px)", y: 0 },
+	viewport: { once: true, margin: "-60px" },
+};
+
 export function SiteFooter() {
 	return (
-		<footer className="relative overflow-hidden border-t border-neutral-200 bg-surface">
-			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-x-0 -bottom-24 h-64 bg-gradient-to-t from-brand/15 via-brand/5 to-transparent blur-2xl"
-			/>
-			<div className="relative mx-auto max-w-6xl px-6 py-16">
-				<div className="grid gap-10 md:grid-cols-[1.5fr_repeat(4,1fr)]">
-					<div>
+		<footer className="relative w-full overflow-hidden border-t border-neutral-200 bg-tint font-sans text-neutral-600">
+			<div className="mx-auto flex max-w-[1400px] flex-col border-x border-dashed border-neutral-300 px-6 pt-20 md:px-12 md:pt-28 lg:px-16">
+				<div className="mb-12 grid grid-cols-1 gap-14 md:mb-16 lg:grid-cols-12 lg:gap-8">
+					<motion.div
+						{...fadeUp}
+						transition={{ duration: 0.5 }}
+						className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4"
+					>
 						<Logo />
-						<p className="mt-3 max-w-xs text-sm text-neutral-500">
+						<p className="max-w-[320px] text-[15px] leading-relaxed text-neutral-500">
 							The agent that runs your close, reconciliation, and cash
 							reporting end to end — exceptions and human review included.
 						</p>
+						<a
+							href="mailto:hello@grayoffice.com"
+							className="group mt-1 inline-flex items-center gap-2 text-[17px] text-neutral-800 transition-colors hover:text-neutral-950"
+						>
+							hello@grayoffice.com
+							<ArrowUpRight
+								size={17}
+								className="text-neutral-400 transition-colors group-hover:text-neutral-900"
+							/>
+						</a>
+					</motion.div>
+					<div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:col-span-7 lg:gap-8 xl:col-span-8">
+						{FOOTER_COLS.map((col, i) => (
+							<motion.div
+								key={col.title}
+								{...fadeUp}
+								transition={{ duration: 0.5, delay: 0.06 * (i + 1) }}
+								className="flex flex-col gap-5"
+							>
+								<h4 className="font-medium text-neutral-900">{col.title}</h4>
+								<ul className="flex flex-col gap-3">
+									{col.links.map((l) => (
+										<li key={l}>
+											<a
+												href="/#"
+												className="text-[15px] transition-colors hover:text-neutral-900"
+											>
+												{l}
+											</a>
+										</li>
+									))}
+								</ul>
+							</motion.div>
+						))}
 					</div>
-					{FOOTER_COLS.map((col) => (
-						<div key={col.title}>
-							<div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-								{col.title}
-							</div>
-							<ul className="mt-3 space-y-2 text-sm text-neutral-600">
-								{col.links.map((l) => (
-									<li key={l}>
-										<a
-											href="/#"
-											className="transition-colors hover:text-neutral-900"
-										>
-											{l}
-										</a>
-									</li>
-								))}
-							</ul>
-						</div>
-					))}
 				</div>
-				<div className="mt-12 flex flex-col gap-2 border-t border-neutral-200 pt-6 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
+
+				<div className="flex flex-col gap-2 pb-6 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
 					<span>© {new Date().getFullYear()} grayoffice, Inc.</span>
 					<span>Built for accounting, finance & treasury teams.</span>
+				</div>
+
+				{/* oversized wordmark, clipped at the floor */}
+				<div className="pointer-events-none -mb-[1.5%] w-full select-none">
+					<svg
+						viewBox="0 30 800 80"
+						preserveAspectRatio="xMidYMid meet"
+						className="h-auto w-full"
+						aria-hidden
+					>
+						<defs>
+							<linearGradient id="go-watermark" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stopColor="#c7d2fe" />
+								<stop offset="55%" stopColor="#e0e7ff" />
+								<stop offset="100%" stopColor="#e9d5ff" />
+							</linearGradient>
+						</defs>
+						<text
+							x="0"
+							y="130"
+							textAnchor="start"
+							textLength="100%"
+							lengthAdjust="spacing"
+							fill="url(#go-watermark)"
+							className="font-semibold tracking-tighter"
+							fontSize="140"
+						>
+							grayoffice
+						</text>
+					</svg>
 				</div>
 			</div>
 		</footer>
