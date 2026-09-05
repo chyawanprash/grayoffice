@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import { motion } from "motion/react";
 import { ArrowUpRight } from "@phosphor-icons/react";
 
 export function Logo({ className = "" }: { className?: string }) {
@@ -64,60 +63,45 @@ const FOOTER_COLS: { title: string; links: string[] }[] = [
 	{ title: "Legal", links: ["Privacy", "Terms", "DPA", "Sub-processors"] },
 ];
 
-const fadeUp = {
-	initial: { opacity: 0, filter: "blur(6px)", y: 14 },
-	whileInView: { opacity: 1, filter: "blur(0px)", y: 0 },
-	viewport: { once: true, margin: "-60px" },
-};
-
 export function SiteFooter() {
 	return (
-		<footer className="relative w-full overflow-hidden border-t border-neutral-200 bg-tint font-sans text-neutral-600">
+		<footer className="relative w-full overflow-hidden border-t border-neutral-200 bg-tint font-sans text-neutral-700">
 			<div className="mx-auto flex max-w-[1400px] flex-col border-x border-dashed border-neutral-300 px-6 pt-20 md:px-12 md:pt-28 lg:px-16">
 				<div className="mb-12 grid grid-cols-1 gap-14 md:mb-16 lg:grid-cols-12 lg:gap-8">
-					<motion.div
-						{...fadeUp}
-						transition={{ duration: 0.5 }}
-						className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4"
-					>
+					<div className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4">
 						<Logo />
-						<p className="max-w-[320px] text-[15px] leading-relaxed text-neutral-500">
+						<p className="max-w-[320px] text-[15px] leading-relaxed text-neutral-600">
 							The agent that runs your close, reconciliation, and cash
 							reporting end to end — exceptions and human review included.
 						</p>
 						<a
 							href="mailto:hello@grayoffice.com"
-							className="group mt-1 inline-flex items-center gap-2 text-[17px] text-neutral-800 transition-colors hover:text-neutral-950"
+							className="group mt-1 inline-flex items-center gap-2 text-[17px] text-neutral-900 transition-colors hover:text-brand"
 						>
 							hello@grayoffice.com
 							<ArrowUpRight
 								size={17}
-								className="text-neutral-400 transition-colors group-hover:text-neutral-900"
+								className="text-neutral-400 transition-colors group-hover:text-brand"
 							/>
 						</a>
-					</motion.div>
+					</div>
 					<div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:col-span-7 lg:gap-8 xl:col-span-8">
-						{FOOTER_COLS.map((col, i) => (
-							<motion.div
-								key={col.title}
-								{...fadeUp}
-								transition={{ duration: 0.5, delay: 0.06 * (i + 1) }}
-								className="flex flex-col gap-5"
-							>
-								<h4 className="font-medium text-neutral-900">{col.title}</h4>
+						{FOOTER_COLS.map((col) => (
+							<div key={col.title} className="flex flex-col gap-5">
+								<h4 className="font-semibold text-neutral-900">{col.title}</h4>
 								<ul className="flex flex-col gap-3">
 									{col.links.map((l) => (
 										<li key={l}>
 											<a
 												href="/#"
-												className="text-[15px] transition-colors hover:text-neutral-900"
+												className="text-[15px] text-neutral-600 transition-colors hover:text-neutral-900"
 											>
 												{l}
 											</a>
 										</li>
 									))}
 								</ul>
-							</motion.div>
+							</div>
 						))}
 					</div>
 				</div>
