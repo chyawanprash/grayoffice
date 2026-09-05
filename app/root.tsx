@@ -8,7 +8,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 			<head>
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
-				<title>grayoffice — the finance ops agent</title>
+				<title>Gray Office — the finance ops agent</title>
 				<link rel="icon" type="image/x-icon" href="/favicon.ico" />
 				<Meta />
 				<Links />

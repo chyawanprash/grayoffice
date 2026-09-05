@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react";
 
 export function meta() {
-	return [{ title: "Overview — grayoffice" }];
+	return [{ title: "Overview — Gray Office" }];
 }
 
 const KPIS = [

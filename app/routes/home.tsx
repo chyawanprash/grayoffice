@@ -16,11 +16,11 @@ import { FooterGradient } from "~/components/footer-gradient";
 
 export function meta() {
 	return [
-		{ title: "grayoffice — the finance ops agent" },
+		{ title: "Gray Office — the finance ops agent" },
 		{
 			name: "description",
 			content:
-				"grayoffice automates internal finance workflows end to end: closing the books, reconciliation, invoice processing, cash reports, and GST tax calculation with state detection.",
+				"Gray Office automates internal finance workflows end to end: closing the books, reconciliation, invoice processing, cash reports, and GST tax calculation with state detection.",
 		},
 	];
 }
@@ -62,7 +62,7 @@ const STEPS = [
 	{
 		n: "01",
 		title: "Connect your systems",
-		body: "Link your ERP, banks, and billing tools. grayoffice reads the same data your team does.",
+		body: "Link your ERP, banks, and billing tools. Gray Office reads the same data your team does.",
 	},
 	{
 		n: "02",
@@ -94,7 +94,7 @@ export default function Home() {
 						The agent that runs your finance back office.
 					</h1>
 					<p className="mt-5 max-w-lg text-lg leading-relaxed text-neutral-600">
-						grayoffice takes over the repetitive work of closing the books,
+						Gray Office takes over the repetitive work of closing the books,
 						reconciling accounts, processing invoices, and preparing cash
 						reports — exceptions and human review included.
 					</p>
@@ -152,7 +152,7 @@ export default function Home() {
 					One agent, the whole finance process
 				</h2>
 				<p className="mt-3 max-w-2xl text-neutral-600">
-					grayoffice owns each workflow end to end — not just a step of it —
+					Gray Office owns each workflow end to end — not just a step of it —
 					and hands back only the cases that genuinely need judgment.
 				</p>
 				<div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

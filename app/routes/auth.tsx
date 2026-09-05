@@ -4,7 +4,7 @@ import { ArrowLeft } from "@phosphor-icons/react";
 import { Logo } from "~/components/brand";
 
 export function meta() {
-	return [{ title: "Sign in — grayoffice" }];
+	return [{ title: "Sign in — Gray Office" }];
 }
 
 const OTP_LEN = 6;
@@ -74,18 +74,41 @@ export default function Auth() {
 						backgroundSize: "22px 22px",
 					}}
 				/>
+				<style>{`
+					@keyframes auth-glare-a { 0%,100% { transform: translate3d(0,0,0) scale(1) } 33% { transform: translate3d(18%,22%,0) scale(1.18) } 66% { transform: translate3d(-12%,10%,0) scale(0.9) } }
+					@keyframes auth-glare-b { 0%,100% { transform: translate3d(0,0,0) scale(1) } 50% { transform: translate3d(-24%,-18%,0) scale(1.25) } }
+					@keyframes auth-glare-c { 0%,100% { transform: translate3d(0,0,0) scale(1.05) } 40% { transform: translate3d(16%,-14%,0) scale(0.85) } 75% { transform: translate3d(-8%,18%,0) scale(1.15) } }
+					@media (prefers-reduced-motion: reduce) { .auth-glare { animation: none !important } }
+				`}</style>
 				<div
 					aria-hidden
-					className="pointer-events-none absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full bg-white/20 blur-3xl"
+					className="auth-glare pointer-events-none absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full bg-white/45 blur-3xl"
+					style={{ animation: "auth-glare-a 9s ease-in-out infinite" }}
 				/>
 				<div
 					aria-hidden
-					className="pointer-events-none absolute -bottom-40 -right-24 h-[26rem] w-[26rem] rounded-full bg-black/20 blur-3xl"
+					className="auth-glare pointer-events-none absolute right-0 top-1/3 h-[22rem] w-[22rem] rounded-full bg-amber-200/35 blur-3xl"
+					style={{ animation: "auth-glare-c 11s ease-in-out infinite" }}
+				/>
+				<div
+					aria-hidden
+					className="auth-glare pointer-events-none absolute bottom-0 left-1/4 h-[20rem] w-[20rem] rounded-full bg-yellow-100/25 blur-3xl"
+					style={{ animation: "auth-glare-b 12s ease-in-out infinite" }}
+				/>
+				<div
+					aria-hidden
+					className="auth-glare pointer-events-none absolute -bottom-40 -right-24 h-[26rem] w-[26rem] rounded-full bg-black/20 blur-3xl"
+					style={{ animation: "auth-glare-b 10s ease-in-out infinite" }}
+				/>
+				<div
+					aria-hidden
+					className="auth-glare pointer-events-none absolute -top-24 right-1/4 h-[24rem] w-[24rem] rounded-full bg-black/25 blur-3xl"
+					style={{ animation: "auth-glare-c 13s ease-in-out infinite" }}
 				/>
 
 				<div className="relative z-10 flex items-center justify-between">
 					<span className="text-lg font-semibold tracking-tight text-white">
-						grayoffice
+						Gray Office
 					</span>
 					<Link
 						to="/"
@@ -100,8 +123,7 @@ export default function Auth() {
 						Your finance back office, on autopilot.
 					</h1>
 					<p className="max-w-sm text-base leading-relaxed text-white/80 sm:text-lg">
-						Close, reconcile, and report — grayoffice works the queue every day
-						and escalates only what needs you.
+						Close, reconcile, and report.
 					</p>
 				</div>
 			</div>
@@ -116,7 +138,7 @@ export default function Auth() {
 					{step === "email" ? (
 						<>
 							<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
-								Sign in to grayoffice
+								Sign in to Gray Office
 							</h1>
 							<p className="mt-2 text-sm text-neutral-500">
 								Use your work email to continue.

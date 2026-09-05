@@ -104,7 +104,7 @@ export function SiteFooter() {
 				</div>
 
 				<div className="flex flex-col gap-2 pb-6 text-xs text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
-					<span>© {new Date().getFullYear()} grayoffice, Inc.</span>
+					<span>© {new Date().getFullYear()} Gray Office, Inc.</span>
 					<span>Built for accounting, finance & treasury teams.</span>
 				</div>
 
@@ -133,7 +133,7 @@ export function SiteFooter() {
 							className="font-semibold tracking-tighter"
 							fontSize="140"
 						>
-							grayoffice
+							Gray Office
 						</text>
 					</svg>
 				</div>
