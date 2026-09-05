@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import {
 	ArrowRight,
+	ArrowUpRight,
 	ArrowsClockwise,
 	Receipt,
 	ChartLineUp,
@@ -80,53 +81,55 @@ export default function Home() {
 		<div className="min-h-screen bg-canvas">
 			<SiteNav />
 
-			{/* Hero */}
-			<section
-				id="product"
-				className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.1fr] lg:py-24"
-			>
-				<div>
-					<span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-surface px-3 py-1 text-xs font-medium text-neutral-600">
-						<Sparkle size={13} weight="fill" className="text-brand" />
-						Internal finance operations, automated
-					</span>
-					<h1 className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight text-neutral-900 sm:text-5xl">
-						The agent that runs your finance back office.
-					</h1>
-					<p className="mt-5 max-w-lg text-lg leading-relaxed text-neutral-600">
-						grayoffice takes over the repetitive work of closing the books,
-						reconciling accounts, processing invoices, and preparing cash
-						reports — exceptions and human review included.
-					</p>
-					<div className="mt-8 flex flex-wrap items-center gap-3">
-						<Link
-							to="/auth"
-							className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-xs ring-1 ring-brand transition-colors hover:bg-brand-hover"
-						>
-							Get started <ArrowRight size={16} weight="bold" />
-						</Link>
-						<a
-							href="#workflows"
-							className="inline-flex items-center gap-2 rounded-lg bg-surface px-5 py-2.5 text-sm font-medium text-neutral-700 ring-1 ring-neutral-950/10 transition-colors hover:bg-tint"
-						>
-							See the workflows
-						</a>
-					</div>
-					<div className="mt-8 flex items-center gap-2 text-xs text-neutral-500">
-						<ShieldCheck size={14} className="text-neutral-400" />
-						SOC 2-ready controls · full audit trail · human-in-the-loop by
-						default
-					</div>
-				</div>
-
-				<div className="relative">
-					<RippleGridCard />
-					<div className="pointer-events-none absolute -bottom-5 -left-5 hidden rounded-lg border border-neutral-200 bg-surface px-4 py-3 shadow-sm sm:block">
-						<div className="text-[11px] uppercase tracking-wide text-neutral-400">
-							This close
+			{/* Hero — shadcnblocks "hero1" split layout (light), ripple-grid on the right */}
+			<section id="product" className="py-20 lg:py-28">
+				<div className="container mx-auto max-w-6xl px-6">
+					<div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+						<div className="flex flex-col items-center gap-5 text-center lg:items-start lg:text-left">
+							<span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-surface px-3 py-1 text-xs font-medium text-neutral-600">
+								<Sparkle size={13} weight="fill" className="text-brand" />
+								Internal finance operations, automated
+								<ArrowUpRight size={13} weight="bold" className="text-neutral-400" />
+							</span>
+							<h1 className="max-w-xl text-pretty text-4xl font-semibold tracking-tight text-neutral-900 md:text-5xl lg:max-w-2xl lg:text-6xl">
+								The agent that runs your finance back office.
+							</h1>
+							<p className="max-w-xl text-balance text-neutral-600 lg:text-xl">
+								grayoffice takes over the repetitive work of closing the books,
+								reconciling accounts, processing invoices, and preparing cash
+								reports — exceptions and human review included.
+							</p>
+							<div className="flex w-full flex-col justify-center gap-2 sm:flex-row lg:justify-start">
+								<Link
+									to="/auth"
+									className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-medium text-white shadow-xs ring-1 ring-brand transition-colors hover:bg-brand-hover sm:w-auto"
+								>
+									Get started <ArrowRight size={16} weight="bold" />
+								</Link>
+								<a
+									href="#workflows"
+									className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-surface px-5 py-3 text-sm font-medium text-neutral-700 ring-1 ring-neutral-950/10 transition-colors hover:bg-tint sm:w-auto"
+								>
+									See the workflows
+								</a>
+							</div>
+							<div className="flex items-center gap-2 text-xs text-neutral-500">
+								<ShieldCheck size={14} className="text-neutral-400" />
+								SOC 2-ready controls · full audit trail · human-in-the-loop by
+								default
+							</div>
 						</div>
-						<div className="mt-0.5 text-sm font-semibold text-neutral-900">
-							142 / 148 tasks done
+
+						<div className="relative">
+							<RippleGridCard />
+							<div className="pointer-events-none absolute -bottom-5 -left-5 hidden rounded-lg border border-neutral-200 bg-surface px-4 py-3 shadow-sm sm:block">
+								<div className="text-[11px] uppercase tracking-wide text-neutral-400">
+									This close
+								</div>
+								<div className="mt-0.5 text-sm font-semibold text-neutral-900">
+									142 / 148 tasks done
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
