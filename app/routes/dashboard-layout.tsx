@@ -8,6 +8,7 @@ import {
 	MagnifyingGlass,
 	Receipt,
 	SignOut,
+	Sparkle,
 	ArrowsClockwise,
 	Wallet,
 } from "@phosphor-icons/react";
@@ -25,6 +26,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 const NAV = [
 	{ to: "/dashboard", label: "Overview", icon: Gauge, end: true },
+	{ to: "/dashboard/assistant", label: "Assistant", icon: Sparkle, end: true },
 	{ to: "/dashboard#close", label: "Close the books", icon: FileText },
 	{ to: "/dashboard#recon", label: "Reconciliation", icon: ArrowsClockwise },
 	{ to: "/dashboard#invoices", label: "Invoices", icon: Receipt },

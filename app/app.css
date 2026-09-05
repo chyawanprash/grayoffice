@@ -173,3 +173,93 @@ body::before {
     @apply font-sans;
 	}
 }
+
+/* ── ai-lights card ─────────────────────────────────────────────────────── */
+
+@property --ai-angle { syntax: "<angle>"; inherits: false; initial-value: 180deg; }
+@property --ai-s1 { syntax: "<angle>"; inherits: false; initial-value: 16deg; }
+@property --ai-s2 { syntax: "<angle>"; inherits: false; initial-value: 30deg; }
+@property --ai-s3 { syntax: "<angle>"; inherits: false; initial-value: 43deg; }
+@property --ai-s4 { syntax: "<angle>"; inherits: false; initial-value: 59deg; }
+@property --ai-s5 { syntax: "<angle>"; inherits: false; initial-value: 72deg; }
+@property --ai-s6 { syntax: "<angle>"; inherits: false; initial-value: 84deg; }
+
+.ai-lights-card {
+	--border-line: #e6e6e6;
+	--ease-out: cubic-bezier(0.26, 0.94, 0.6, 1);
+	--s-surface-2: #fbfbfb;
+	--s-surface-1: #f4f4f4;
+	--s-border-1: #dedede;
+	--s-text-primary: #1b1b1b;
+	--s-text-body: #3a3a3a;
+	--s-text-muted: #8a8a8a;
+	--s-text-subtle: #a6a6a6;
+	--s-text-inverse: #ffffff;
+}
+
+.ai-lights-layer {
+	position: absolute;
+	pointer-events: none;
+	opacity: 0;
+	mask-repeat: no-repeat;
+	-webkit-mask-repeat: no-repeat;
+	mask-size: 100% 100%;
+	-webkit-mask-size: 100% 100%;
+	background: conic-gradient(
+		from var(--ai-angle) at 50% 50%,
+		var(--ai-c1, #005bf6) 0deg,
+		var(--ai-c2, #b0c6e9) var(--ai-s1),
+		var(--ai-c3, #feca00) var(--ai-s2),
+		var(--ai-c4, #ff1c11) var(--ai-s3),
+		var(--ai-c5, #ff00ea) var(--ai-s4),
+		var(--ai-c6, #ffa2fbcc) var(--ai-s5),
+		transparent var(--ai-s6),
+		transparent 324deg,
+		var(--ai-tail, #95c1ffa1) 349deg,
+		var(--ai-c1, #005bf6) 360deg
+	);
+}
+
+.ai-lights[data-playing="true"] .ai-lights-layer {
+	animation: ai-pulse 1600ms cubic-bezier(0.26, 0.94, 0.6, 1) both;
+}
+.ai-lights[data-morphing="true"] .ai-lights-layer {
+	display: none;
+}
+
+@keyframes ai-pulse {
+	0% {
+		opacity: 0;
+		--ai-angle: 180deg;
+		--ai-s1: 16deg; --ai-s2: 30deg; --ai-s3: 43deg;
+		--ai-s4: 59deg; --ai-s5: 72deg; --ai-s6: 84deg;
+	}
+	10% { opacity: 1; }
+	30% { opacity: 1; }
+	100% {
+		opacity: 0;
+		--ai-angle: 30deg;
+		--ai-s1: 6deg; --ai-s2: 11deg; --ai-s3: 17deg;
+		--ai-s4: 40deg; --ai-s5: 90deg; --ai-s6: 120deg;
+	}
+}
+
+@keyframes ai-char {
+	from { opacity: 0; transform: translateY(16px); filter: blur(2px); }
+	to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes ai-char-fade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+@keyframes ai-ring {
+	0%, 100% { opacity: 0.55; transform: scale(1); }
+	50% { opacity: 0; transform: scale(1.5); }
+}
+@keyframes ai-spin {
+	to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ai-lights[data-playing="true"] .ai-lights-layer { animation: none; }
+}

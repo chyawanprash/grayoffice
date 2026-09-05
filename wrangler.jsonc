@@ -8,7 +8,8 @@
 		"enabled": true
 	},
 	"ai": {
-		"binding": "AI"
+		"binding": "AI",
+		"remote": true
 	},
 	"kv_namespaces": [
 		{

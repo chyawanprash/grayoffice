@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { SiteNav, SiteFooter } from "~/components/brand";
 import { RippleGridCard } from "~/components/ripple-grid/RippleGridCard";
+import { AiLightsCard } from "~/components/ai-lights/AiLightsCard";
 import { FooterGradient } from "~/components/footer-gradient";
 import { Button } from "~/components/ui/button";
 
@@ -110,7 +111,7 @@ export default function Home() {
 				</div>
 
 				<div className="relative">
-					<RippleGridCard />
+					<AiLightsCard />
 					<div className="pointer-events-none absolute -bottom-5 -left-5 hidden rounded-lg border border-neutral-200 bg-surface px-4 py-3 shadow-sm sm:block">
 						<div className="text-[11px] uppercase tracking-wide text-neutral-400">
 							This close
@@ -186,6 +187,10 @@ export default function Home() {
 								</p>
 							</div>
 						))}
+					</div>
+
+					<div className="mt-12 overflow-hidden rounded-xl border border-neutral-200">
+						<RippleGridCard />
 					</div>
 					<div className="mt-14 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-canvas p-6">
 						<div>
