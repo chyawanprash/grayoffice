@@ -6,13 +6,11 @@ import {
 	ChartLineUp,
 	Globe,
 	Percent,
-	ShieldCheck,
-	Sparkle,
 	Stack,
 } from "@phosphor-icons/react";
-import { SiteNav, SiteFooter } from "~/components/brand";
-import { RippleGridCard } from "~/components/ripple-grid/RippleGridCard";
+import { SiteFooter } from "~/components/brand";
 import { DiaGradient } from "~/components/dia-gradient";
+import Hero31 from "~/components/ui/hero-31";
 
 export function meta() {
 	return [
@@ -179,8 +177,8 @@ export default function Home() {
 			<SiteFooter />
 
 			{/* Dia Browser-style glow rising from the floor, below the footer */}
-			<div className="h-56 w-full overflow-hidden bg-black sm:h-72">
-				<DiaGradient />
+			<div className="h-64 w-full overflow-hidden border-t border-neutral-200 bg-surface sm:h-80">
+				<DiaGradient blur={22} valley={0.7} />
 			</div>
 		</div>
 	);
