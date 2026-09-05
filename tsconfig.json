@@ -10,6 +10,10 @@
 		"skipLibCheck": true,
 		"strict": true,
 		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"~/*": ["./app/*"]
+		},
 		"types": ["@cloudflare/workers-types/2023-07-01"]
 	}
 }
