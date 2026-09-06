@@ -98,7 +98,7 @@ type Mode = "totp" | "email" | "recovery";
 
 export default function MfaChallenge({ actionData, loaderData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const [mode, setMode] = useState<Mode>("totp");
 
 	const titles: Record<Mode, string> = {

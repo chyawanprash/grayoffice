@@ -39,7 +39,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 export default function AcceptInvite({ loaderData, actionData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 
 	if (loaderData.state === "invalid")
 		return (

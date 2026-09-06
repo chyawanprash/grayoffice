@@ -34,7 +34,8 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 export default function OnboardingInvite({ loaderData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	// only the form POST, not a plain link navigation like "Skip for now"
+	const busy = nav.state === "submitting";
 
 	return (
 		<AuthShell back={{ to: "/dashboard", label: "Skip for now" }}>

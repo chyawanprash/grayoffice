@@ -141,7 +141,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 	const { stats, ingestUrl, tokenConfigured, aiConfigured } = loaderData;
 	const nav = useNavigation();
 	const testing =
-		nav.state !== "idle" && nav.formData?.get("intent") === "test";
+		nav.formData?.get("intent") === "test";
 	const test = actionData?.test;
 
 	return (

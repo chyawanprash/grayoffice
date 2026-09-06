@@ -67,7 +67,7 @@ function pretty(json: string | null): string {
 export default function Documents({ loaderData, actionData }: Route.ComponentProps) {
 	const { docs } = loaderData;
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const revalidator = useRevalidator();
 	const [open, setOpen] = useState<string | null>(null);
 	const anyProcessing = docs.some((d) => d.status === "processing");

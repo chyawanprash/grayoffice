@@ -176,7 +176,7 @@ export default function ProviderPage({ loaderData, actionData }: Route.Component
 		events,
 	} = loaderData;
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const err = actionData && "error" in actionData ? actionData.error : null;
 	const saved = actionData && "ok" in actionData && actionData.ok === "saved";
 	const sel = new Set(selected);

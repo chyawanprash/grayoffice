@@ -120,7 +120,7 @@ const inr = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigi
 
 export default function Banking({ loaderData, actionData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const err = actionData && "error" in actionData ? actionData.error : null;
 
 	return (

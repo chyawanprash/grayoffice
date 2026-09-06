@@ -75,7 +75,7 @@ const card = "rounded-xl bg-card p-4 text-card-foreground";
 export default function Organization({ loaderData, actionData }: Route.ComponentProps) {
 	const { org, role, members, invites, models } = loaderData;
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const err = actionData && "error" in actionData ? actionData.error : null;
 
 	return (

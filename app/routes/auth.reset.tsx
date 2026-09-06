@@ -82,7 +82,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 export default function ResetPassword({ actionData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const sent = actionData && "sent" in actionData ? actionData.sent : false;
 	const email = actionData && "email" in actionData ? actionData.email : "";
 	const error = actionData && "error" in actionData ? actionData.error : null;

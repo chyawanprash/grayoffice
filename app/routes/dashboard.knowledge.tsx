@@ -59,7 +59,7 @@ const badge: Record<string, string> = {
 export default function KnowledgeBase({ loaderData, actionData }: Route.ComponentProps) {
 	const { docs, pinecone } = loaderData;
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const revalidator = useRevalidator();
 	const anyProcessing = docs.some((d) => d.status === "processing");
 

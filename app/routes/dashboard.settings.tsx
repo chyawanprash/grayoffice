@@ -173,7 +173,7 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
 
 export default function Settings({ actionData, loaderData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const err = actionData && "error" in actionData ? actionData.error : null;
 	const pwError =
 		(actionData && "pwError" in actionData ? actionData.pwError : null) ?? null;

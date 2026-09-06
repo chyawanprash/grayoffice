@@ -73,7 +73,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const signup = loaderData?.signup ?? false;
 
 	return (

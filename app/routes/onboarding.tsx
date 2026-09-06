@@ -33,7 +33,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 export default function Onboarding({ actionData }: Route.ComponentProps) {
 	const nav = useNavigation();
-	const busy = nav.state !== "idle";
+	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 
 	return (
 		<AuthShell back={{ to: "/logout", label: "Sign out" }}>
