@@ -7,7 +7,8 @@ import { ThinkingState } from "./thinking-state";
 import { ToolChips, type ToolStepData } from "./tool-chips";
 import { ApprovalCard } from "./approval-card";
 import { MessageActions, FollowUps } from "./message-extras";
-import { Composer } from "./composer";
+import { PromptBar } from "./prompt-bar";
+import { RichBlock, displayBlockOf } from "./blocks";
 
 const SUGGESTIONS = [
 	"What's our bank balance?",
@@ -115,6 +116,11 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 
 								{toolSteps.length > 0 && <ToolChips steps={toolSteps} />}
 
+								{toolParts.map((p, i) => {
+									const block = p.state === "output-available" ? displayBlockOf(p.output) : null;
+									return block ? <RichBlock key={`b${i}`} block={block} /> : null;
+								})}
+
 								{proposed && (
 									<ApprovalCard
 										questions={[
@@ -165,7 +171,11 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 			</div>
 
 			<div className={compact ? "border-t border-line p-3" : "pt-3"}>
-				<Composer onSend={(t) => sendMessage({ text: t })} disabled={busy} />
+				<PromptBar
+					demo={false}
+					placeholder="Ask the finance agent…"
+					onSend={(t) => t.trim() && sendMessage({ text: t })}
+				/>
 			</div>
 		</div>
 	);

@@ -120,14 +120,53 @@ export function createFinanceAgent(
 					const row = await bank();
 					if (!row) return { connected: false };
 					const summary = await getBankSummary(row);
-					return { connected: true, ...summary };
+					const txns = summary?.transactions ?? [];
+					return {
+						connected: true,
+						...summary,
+						_display: {
+							kind: "table",
+							caption: `${summary?.account.holder_name ?? "Account"} — balance ₹${summary?.account.balance?.toLocaleString("en-IN") ?? "?"}`,
+							columns: [
+								{ key: "created_at", label: "Date" },
+								{ key: "description", label: "Description" },
+								{ key: "amount", label: "Amount", align: "right" },
+								{ key: "balance_after", label: "Balance", align: "right" },
+							],
+							rows: txns.slice(0, 20).map((t) => ({
+								created_at: new Date(t.created_at).toLocaleDateString(),
+								description: t.description,
+								amount: `${t.type === "credit" ? "+" : "−"}₹${t.amount.toLocaleString("en-IN")}`,
+								balance_after: `₹${t.balance_after.toLocaleString("en-IN")}`,
+							})),
+						},
+					};
 				},
 			}),
 
 			searchKnowledgeBase: tool({
 				description: "Search the organization's uploaded documents for relevant passages.",
 				inputSchema: z.object({ query: z.string() }),
-				execute: async ({ query }) => ({ passages: await searchKb(env, orgId, query) }),
+				execute: async ({ query }) => {
+					const passages = await searchKb(env, orgId, query);
+					return {
+						passages,
+						_display: passages.length
+							? {
+									kind: "context",
+									count: String(passages.length),
+									chunks: passages.map((p) => ({
+										title: p.name,
+										chars: `${p.text.length} characters`,
+										body: p.text.slice(0, 240),
+										source: p.name,
+										badge: "DOC",
+										tone: "bg-aic",
+									})),
+								}
+							: undefined,
+					};
+				},
 			}),
 
 			bankCredit: bankWriteTool("credit", "Add money to the org's bank account."),

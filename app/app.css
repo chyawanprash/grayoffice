@@ -425,3 +425,40 @@ a:hover > .animated-underline,
 @media (prefers-reduced-motion: reduce) {
 	.ai-reduce-motion * { animation-duration: 0.001ms !important; }
 }
+
+/* extra tokens/classes for the remaining ported chat-states components */
+@theme {
+	--color-aic-tint: #e0e7ff;
+	--color-page: #fbfbfb;
+}
+.dark {
+	--color-aic-tint: #1e1b4b;
+	--color-page: #0f0f11;
+}
+:root {
+	--grid-line: var(--color-line);
+	--tooltip-fg: #ffffff;
+	--green: var(--color-green);
+	--red: var(--color-red);
+	--orange: var(--color-orange);
+	--accent: var(--color-aic);
+	--page: var(--color-page);
+}
+
+.primitive-card-bar { padding: 0.5rem 0.75rem; }
+
+.filter-status-todo { border-color: color-mix(in srgb, #f09a2f 40%, transparent); color: #b06a12; background: color-mix(in srgb, #f09a2f 12%, transparent); }
+.filter-status-progress { border-color: color-mix(in srgb, #16a6c7 40%, transparent); color: #0e7285; background: color-mix(in srgb, #16a6c7 12%, transparent); }
+.filter-status-done { border-color: color-mix(in srgb, #25a878 40%, transparent); color: #1a7a58; background: color-mix(in srgb, #25a878 12%, transparent); }
+.dark .filter-status-todo { color: #f5b866; }
+.dark .filter-status-progress { color: #5cc8dd; }
+.dark .filter-status-done { color: #5fd0a5; }
+
+.insight-chart-stage { touch-action: none; }
+.insight-chart-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-strong); pointer-events: none; transform: translateX(-0.5px); }
+.insight-chart-tooltip-anchor { position: absolute; top: 8px; transform: translateX(-50%); pointer-events: none; }
+.insight-chart-tooltip { display: flex; gap: 8px; border-radius: 8px; background: var(--tooltip-bg); padding: 4px 8px; box-shadow: var(--shadow-overlay); }
+.insight-chart-tooltip-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #fff; font-variant-numeric: tabular-nums; }
+.insight-chart-tooltip-dot { width: 7px; height: 7px; border-radius: 9999px; }
+
+.records-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11.5px; font-weight: 500; background: color-mix(in oklch, var(--tag-base) 16%, transparent); color: color-mix(in oklch, var(--tag-base) 75%, var(--color-ink)); }
