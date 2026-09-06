@@ -16,6 +16,7 @@ export default [
 	route("auth/google/callback", "routes/auth.google.callback.tsx"),
 	route("logout", "routes/logout.tsx"),
 	route("agent", "routes/api.agent.tsx"),
+	route("settings/data", "routes/settings.data.tsx"),
 	layout("routes/dashboard-layout.tsx", [
 		route("dashboard", "routes/dashboard.tsx"),
 		route("dashboard/assistant", "routes/dashboard.assistant.tsx"),

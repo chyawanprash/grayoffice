@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Form, useNavigation } from "react-router";
-import { CheckCircle2, Copy, ShieldCheck, TriangleAlert } from "lucide-react";
+import {
+	CheckCircle2,
+	Copy,
+	Download,
+	ShieldCheck,
+	TriangleAlert,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/dashboard.settings";
 import {
@@ -282,6 +288,33 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 							saved={passwordSaved}
 							busy={busy}
 						/>
+					</div>
+
+					<div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4">
+						<div>
+							<p className="text-sm font-medium text-foreground">
+								Download your data
+							</p>
+							<p className="text-xs text-muted-foreground">
+								A JSON copy of your profile, security settings and connected
+								services. Secrets are never included.
+							</p>
+						</div>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							render={
+								<a
+									href="/settings/data"
+									download="gray-office-account.json"
+									rel="nofollow"
+								/>
+							}
+						>
+							<Download className="size-4" />
+							Download
+						</Button>
 					</div>
 				</section>
 
