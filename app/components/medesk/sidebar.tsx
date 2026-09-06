@@ -7,7 +7,6 @@ import {
 } from 'lucide-react'
 import { Link, useFetcher } from 'react-router'
 import { Avatar, AvatarFallback } from '~/components/ui/avatar'
-import { MedeskLogo } from './logo'
 import { SidebarCollapseIcon } from './icons'
 import { DashboardLink, useDashboardNavigation } from './navigation'
 import { useTheme } from './theme-provider'
@@ -116,7 +115,7 @@ export function DashboardSidebar({
           aria-label="Gray Office home"
           className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-80 group-data-[collapsible=icon]:hidden"
         >
-          <MedeskLogo className="size-7 shrink-0" />
+          <img src="/logo.svg" alt="" width={28} height={28} className="size-7 shrink-0 rounded-[7px]" />
           <span className="flex min-w-0 flex-col leading-tight">
             <span className="truncate text-xl font-medium tracking-tight">
               Gray Office

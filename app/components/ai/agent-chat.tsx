@@ -43,7 +43,7 @@ function short(v: unknown, n = 80): string {
 }
 
 export function AgentChat({ compact = false }: { compact?: boolean }) {
-	const { messages, sendMessage, status, regenerate } = useChat({
+	const { messages, sendMessage, status, regenerate, error } = useChat({
 		transport: new DefaultChatTransport({ api: "/agent" }),
 	});
 	const busy = status === "submitted" || status === "streaming";
@@ -182,7 +182,26 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 					</div>
 				)}
 
-				{!busy && lastAssistant && (
+				{status === "error" && (
+					<div className="ml-9 flex items-start gap-2.5 rounded-lg border border-[color-mix(in_oklch,var(--destructive)_30%,transparent)] bg-[color-mix(in_oklch,var(--destructive)_8%,transparent)] p-3">
+						<img src="/system%20error.svg" alt="" aria-hidden className="mt-0.5 h-8 w-8 shrink-0" />
+						<div className="min-w-0 text-[13px]">
+							<p className="font-medium text-foreground">The assistant hit an error</p>
+							<p className="mt-0.5 text-muted-foreground">
+								{error?.message?.slice(0, 200) || "Something went wrong generating a reply."}
+							</p>
+							<button
+								type="button"
+								onClick={() => regenerate()}
+								className="mt-1.5 text-[12.5px] font-medium text-brand hover:underline"
+							>
+								Try again
+							</button>
+						</div>
+					</div>
+				)}
+
+				{!busy && status !== "error" && lastAssistant && (
 					<div className="pl-9">
 						<FollowUps items={SUGGESTIONS} onPick={(t) => sendMessage({ text: t })} />
 					</div>

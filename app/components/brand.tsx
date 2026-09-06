@@ -35,12 +35,29 @@ export function CTAButton({
 	);
 }
 
-export function Logo({ className = "" }: { className?: string }) {
+export function Logo({
+	className = "",
+	wordmark = true,
+}: {
+	className?: string;
+	wordmark?: boolean;
+}) {
 	return (
 		<span
 			className={`inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-neutral-900 ${className}`}
 		>
-			Gray<span className="text-neutral-400 font-normal">Office</span>
+			<img
+				src="/logo.svg"
+				alt="Gray Office"
+				width={28}
+				height={28}
+				className="size-7 shrink-0 rounded-[7px]"
+			/>
+			{wordmark && (
+				<span>
+					Gray<span className="font-normal text-neutral-400">Office</span>
+				</span>
+			)}
 		</span>
 	);
 }
