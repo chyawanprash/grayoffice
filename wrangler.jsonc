@@ -17,7 +17,10 @@
 		"BANK_URL": "https://bank.grayoffice.app",
 		// Pinecone index name - created automatically on first use (dense, 768,
 		// cosine, serverless aws/us-east-1). Only PINECONE_API_KEY is a secret.
-		"PINECONE_INDEX": "grayoffice"
+		"PINECONE_INDEX": "grayoffice",
+		// Finance agent model. OpenAI when OPENAI_API_KEY (secret) is set,
+		// else Workers AI. Override the id here without a code change.
+		"OPENAI_MODEL": "gpt-5.6-luna"
 	},
 	"ai": {
 		"binding": "AI",

@@ -1,5 +1,6 @@
-import { ToolLoopAgent, tool } from "ai";
+import { ToolLoopAgent, tool, type LanguageModel } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
+import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import { recall, remember } from "./pinecone.server";
 import { listMembers } from "./org.server";
@@ -8,13 +9,24 @@ import { getOrgBank, getBankSummary, bankAction } from "./bank.server";
 import { searchKb } from "./kb.server";
 
 /**
- * The Gray Office finance agent. Runs on Workers AI (no keys) with Pinecone as
- * long-term memory. It can read every entity in the caller's organization -
- * members, payment integrations + live data, the audit log, the connected
- * bank account, and the knowledge base - and can move money on the bank
- * account, but only after the user confirms the exact amount and destination.
+ * The Gray Office finance agent. Uses OpenAI (gpt-5.6-luna by default) when
+ * OPENAI_API_KEY is set, otherwise falls back to Workers AI so it still runs
+ * without any keys. Pinecone is long-term memory. The agent can read every
+ * entity in the caller's organization - members, payment integrations + live
+ * data, the audit log, the connected bank account, and the knowledge base -
+ * and can move money on the bank account, but only after the user confirms the
+ * exact amount and destination.
  */
-const MODEL = "@cf/moonshotai/kimi-k2.7-code"; // tools + 256k ctx
+const OPENAI_MODEL_DEFAULT = "gpt-5.6-luna";
+const WORKERS_AI_MODEL = "@cf/moonshotai/kimi-k2.7-code"; // fallback: tools + 256k ctx
+
+function resolveModel(env: Env): LanguageModel {
+	if (env.OPENAI_API_KEY) {
+		const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
+		return openai(env.OPENAI_MODEL || OPENAI_MODEL_DEFAULT);
+	}
+	return createWorkersAI({ binding: env.AI })(WORKERS_AI_MODEL);
+}
 
 const INSTRUCTIONS = `You are the Gray Office finance operations agent for a
 company's finance team. You help close the books, reconcile accounts, process
@@ -42,11 +54,10 @@ export function createFinanceAgent(
 	env: AgentEnv,
 	{ userId, orgId }: { userId: string; orgId: string },
 ) {
-	const workersai = createWorkersAI({ binding: env.AI });
 	const bank = () => getOrgBank(env.DB, orgId);
 
 	return new ToolLoopAgent({
-		model: workersai(MODEL),
+		model: resolveModel(env),
 		instructions: INSTRUCTIONS,
 		tools: {
 			recallMemory: tool({

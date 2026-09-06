@@ -19,6 +19,7 @@
 		"publish": true
 	},
 	"dependencies": {
+		"@ai-sdk/openai": "^4.0.60",
 		"@ai-sdk/react": "^4.0.96",
 		"@base-ui/react": "^1.8.0",
 		"@fontsource-variable/geist": "^5.3.0",
