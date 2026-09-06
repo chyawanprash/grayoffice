@@ -5,6 +5,7 @@
  */
 
 import { runFinanceAgentText } from "~/lib/agent.server";
+import { aiText } from "~/lib/ai.server";
 
 // `Env` is the generated worker binding type (worker-configuration.d.ts).
 
@@ -57,15 +58,15 @@ export async function askAgent(env: Env, msg: Inbound): Promise<{ reply: string 
 	if (!env.AI || !msg.text.trim())
 		return { reply: "Ask me a finance operations question and I'll help." };
 
-	const r = (await env.AI.run(CHAT_MODEL, {
+	const r = await env.AI.run(CHAT_MODEL, {
 		messages: [
 			{ role: "system", content: CHAT_SYSTEM },
 			{ role: "user", content: msg.text.slice(0, 4000) },
 		],
 		max_tokens: 512,
-	})) as { response?: string };
+	});
 
-	return { reply: (r.response ?? "").trim() || "Sorry, I couldn't produce an answer." };
+	return { reply: aiText(r).trim() || "Sorry, I couldn't produce an answer." };
 }
 
 export async function handleInbound(env: Env, msg: Inbound): Promise<InboundResult> {
@@ -138,10 +139,12 @@ export async function pdfToJson(env: Env, file: InboundFile): Promise<unknown> {
 
 	const md = (await env.AI.toMarkdown([
 		{ name: file.name, blob },
-	])) as Array<{ data: string }>;
-	const markdown = md.map((d) => d.data).join("\n\n").slice(0, 12_000);
+	])) as unknown;
+	const markdown = (Array.isArray(md) ? md : [md])
+		.map((d) => (typeof d === "string" ? d : String((d as { data?: unknown })?.data ?? "")))
+		.join("\n\n").slice(0, 12_000);
 
-	const r = (await env.AI.run(CHAT_MODEL, {
+	const r = await env.AI.run(CHAT_MODEL, {
 		messages: [
 			{
 				role: "system",
@@ -151,9 +154,9 @@ export async function pdfToJson(env: Env, file: InboundFile): Promise<unknown> {
 			{ role: "user", content: markdown },
 		],
 		max_tokens: 1024,
-	})) as { response?: string };
+	});
 
-	const text = (r.response ?? "").replace(/```json\s*|```/gi, "").trim();
+	const text = aiText(r).replace(/```json\s*|```/gi, "").trim();
 	try {
 		return JSON.parse(text);
 	} catch {

@@ -13,6 +13,7 @@ import {
 	upsertChunks,
 } from "./pinecone.server";
 import { stageUpload, readStaged, discardStaged } from "./docs.server";
+import { aiText } from "./ai.server";
 
 type Env = { AI: Ai; DB: D1Database; PINECONE_API_KEY?: string; PINECONE_HOST?: string };
 type QueueEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
@@ -67,8 +68,10 @@ export async function ingestPdf(
 	try {
 		const md = (await env.AI.toMarkdown([
 			{ name, blob: new Blob([bytes], { type: "application/pdf" }) },
-		])) as Array<{ data: string }>;
-		const text = md.map((d) => d.data).join("\n\n");
+		])) as unknown;
+		const text = (Array.isArray(md) ? md : [md])
+			.map((d) => (typeof d === "string" ? d : String((d as { data?: unknown })?.data ?? "")))
+			.join("\n\n");
 		const chunks = chunkText(text).map((t, idx) => ({
 			id: `${docId}:${idx}`,
 			text: t,
@@ -164,16 +167,16 @@ async function extractGraph(
 	name: string,
 	text: string,
 ): Promise<void> {
-	const r = (await env.AI.run(ENTITY_MODEL, {
+	const r = await env.AI.run(ENTITY_MODEL, {
 		messages: [
 			{ role: "system", content: GRAPH_SYSTEM },
 			{ role: "user", content: text.slice(0, 12_000) },
 		],
 		max_tokens: 1200,
-	})) as { response?: string };
+	});
 	let parsed: { entities?: { name: string; kind?: string }[]; relations?: { from: string; to: string; label?: string }[] };
 	try {
-		parsed = JSON.parse((r.response ?? "").replace(/```json\s*|```/gi, "").trim());
+		parsed = JSON.parse(aiText(r).replace(/```json\s*|```/gi, "").trim());
 	} catch {
 		return;
 	}

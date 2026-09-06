@@ -8,7 +8,29 @@
  * typed schemas (invoice / statement / PO) if the shapes start to matter.
  */
 
+import { aiText } from "./ai.server";
+
 type Env = { AI: Ai; DB: D1Database };
+
+/** Best-effort parse of a JSON object out of a model reply (fences, prose, trailing text). */
+function parseJsonObject(s: string): { document_type?: string; summary?: string; data?: unknown } | null {
+	const cleaned = s.replace(/```(?:json)?\s*/gi, "").replace(/```/g, "").trim();
+	try {
+		return JSON.parse(cleaned);
+	} catch {
+		/* fall through */
+	}
+	const start = cleaned.indexOf("{");
+	const end = cleaned.lastIndexOf("}");
+	if (start >= 0 && end > start) {
+		try {
+			return JSON.parse(cleaned.slice(start, end + 1));
+		} catch {
+			/* give up */
+		}
+	}
+	return null;
+}
 type QueueEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
 
 /* --------------------------------------------------- R2 staging for uploads */
@@ -133,25 +155,23 @@ export async function extractPdf(
 	try {
 		const md = (await env.AI.toMarkdown([
 			{ name, blob: new Blob([bytes], { type: "application/pdf" }) },
-		])) as Array<{ data: string }>;
-		const markdown = md.map((d) => d.data).join("\n\n").slice(0, 16_000);
+		])) as unknown;
+		const markdown = (Array.isArray(md) ? md : [md])
+			.map((d) => (typeof d === "string" ? d : String((d as { data?: unknown })?.data ?? "")))
+			.join("\n\n")
+			.slice(0, 16_000);
 		if (!markdown.trim()) throw new Error("no text extracted from PDF");
 
-		const r = (await env.AI.run(MODEL, {
+		const r = await env.AI.run(MODEL, {
 			messages: [
 				{ role: "system", content: SYSTEM },
 				{ role: "user", content: markdown },
 			],
 			max_tokens: 1600,
-		})) as { response?: string };
+		});
 
-		const text = (r.response ?? "").replace(/```json\s*|```/gi, "").trim();
-		let parsed: { document_type?: string; summary?: string; data?: unknown };
-		try {
-			parsed = JSON.parse(text);
-		} catch {
-			parsed = { document_type: "other", summary: "", data: { _raw: text.slice(0, 4000) } };
-		}
+		const raw = aiText(r);
+		const parsed = parseJsonObject(raw) ?? { document_type: "other", summary: "", data: { _raw: raw.slice(0, 4000) } };
 		const docType = String(parsed.document_type ?? "other").slice(0, 40);
 
 		await env.DB.prepare(

@@ -15,7 +15,7 @@ const DUMMY_SET: { document_type: string; template: string; role: "supplier" | "
 	{ document_type: "interstate_invoice", template: "traditional", role: "supplier" },
 	{ document_type: "gst_invoice", template: "erp_style", role: "customer" },
 	{ document_type: "intrastate_invoice", template: "spreadsheet_style", role: "customer" },
-	{ document_type: "reverse_charge_invoice", template: "scanned_style", role: "customer" },
+	{ document_type: "reverse_charge_invoice", template: "traditional", role: "customer" },
 	{ document_type: "export_invoice", template: "modern", role: "supplier" },
 ];
 
