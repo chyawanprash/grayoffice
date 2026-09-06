@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTheme } from "~/components/theme";
 import { DARK_KEYS, VARIANTS, radiusFor, useVariantSizes } from "./variants";
 import { RimGlow } from "./RimGlow";
 import { Surface } from "./Surface";
-import { useAiPulse, useRimMask } from "./use-ai-lights";
+import { rollPalette, useAiPulse, useRimMask } from "./use-ai-lights";
 
 const PULSE_MS = 1600;
 const FADE_OUT_MS = 160;
@@ -13,6 +14,7 @@ const GAP_MS =
 	HANDOVER_AT - PULSE_MS + FADE_OUT_MS + MORPH_MS + 80 + SETTLED_MS;
 
 export function AiLightsCard() {
+	const isDark = useTheme().resolvedTheme === "dark";
 	const bodyRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const { sizes, probe } = useVariantSizes();
@@ -63,6 +65,11 @@ export function AiLightsCard() {
 
 	useEffect(() => clearTimers, []);
 
+	// Re-roll the card palette when the theme flips so the face + tints match.
+	useEffect(() => {
+		if (cardRef.current) rollPalette(cardRef.current);
+	}, [isDark]);
+
 	return (
 		<div
 			data-canvas-card
@@ -90,12 +97,13 @@ export function AiLightsCard() {
 				<div
 					className="relative h-full w-full overflow-hidden rounded-[calc(var(--r)-1px)] transition-colors duration-[var(--m)] ease-[cubic-bezier(0.22,1,0.36,1)]"
 					style={{
-						backgroundColor: DARK_KEYS.has(variant.key)
-							? "#1e1e1e"
-							: "var(--s-surface-2)",
+						backgroundColor:
+							DARK_KEYS.has(variant.key) || isDark
+								? "#1e1e1e"
+								: "var(--s-surface-2)",
 					}}
 				>
-					<Surface dark={DARK_KEYS.has(variant.key)} />
+					<Surface dark={DARK_KEYS.has(variant.key) || isDark} />
 
 					<div
 						key={gen}

@@ -201,8 +201,16 @@ export class RippleGrid {
 
   private started = false;
 
-  constructor(canvas: HTMLCanvasElement) {
+  private ink: [number, number, number] = rgb(INK);
+  private paper: [number, number, number] = rgb(PAPER);
+
+  constructor(
+    canvas: HTMLCanvasElement,
+    colors?: { ink?: string; paper?: string },
+  ) {
     this.canvas = canvas;
+    if (colors?.ink) this.ink = rgb(colors.ink);
+    if (colors?.paper) this.paper = rgb(colors.paper);
     const gl = canvas.getContext("webgl", {
       alpha: false,
       antialias: false,
@@ -287,8 +295,8 @@ export class RippleGrid {
     gl.uniform1f(this.u.uThreshold, THRESHOLD);
     gl.uniform1f(this.u.uShellSoft, SHELL_SOFT);
     gl.uniform1f(this.u.uRippleLen, RIPPLE_LEN);
-    gl.uniform3fv(this.u.uInk, rgb(INK));
-    gl.uniform3fv(this.u.uPaper, rgb(PAPER));
+    gl.uniform3fv(this.u.uInk, this.ink);
+    gl.uniform3fv(this.u.uPaper, this.paper);
     gl.uniform1f(this.u.uCursorPush, CURSOR_PUSH);
     gl.uniform1f(this.u.uCursorRadius, CURSOR_RADIUS);
     gl.uniform1f(this.u.uRippleBias, CURSOR_RIPPLE_BIAS);

@@ -10,6 +10,7 @@ import {
 	findUserById,
 	logout,
 	requireUserId,
+	setName,
 	setPassword,
 	setTotpSecret,
 	verifyPassword,
@@ -62,6 +63,14 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 	const form = await request.formData();
 	const intent = String(form.get("intent") ?? "");
+
+	if (intent === "update-name") {
+		const name = String(form.get("name") ?? "").trim();
+		if (name.length > 80)
+			return { nameError: "Name must be 80 characters or fewer." };
+		await setName(DB, userId, name);
+		return { ok: "name" as const };
+	}
 
 	if (intent === "mfa-start") {
 		await setTotpSecret(DB, userId, newTotpSecret());
@@ -162,6 +171,11 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 	const err = actionData && "error" in actionData ? actionData.error : null;
 	const pwError =
 		(actionData && "pwError" in actionData ? actionData.pwError : null) ?? null;
+	const nameError =
+		(actionData && "nameError" in actionData ? actionData.nameError : null) ?? null;
+	const nameSaved = Boolean(
+		actionData && "ok" in actionData && actionData.ok === "name",
+	);
 	const deleteError =
 		(actionData && "deleteError" in actionData
 			? actionData.deleteError
@@ -185,14 +199,43 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 
 			<div className="grid gap-3 lg:max-w-3xl">
 				<section className={cardClass}>
+					<h2 className={cardTitleClass}>Profile</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Your name is shown in the sidebar and on activity you create.
+					</p>
+					<Form
+						method="post"
+						className="mt-4 flex flex-wrap items-end gap-2"
+						key={loaderData.name ?? ""}
+					>
+						<input type="hidden" name="intent" value="update-name" />
+						<label className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+							Name
+							<input
+								name="name"
+								defaultValue={loaderData.name ?? ""}
+								maxLength={80}
+								placeholder="Your name"
+								className={`${fieldClass} w-64`}
+							/>
+						</label>
+						<Button type="submit" size="sm" disabled={busy}>
+							Save
+						</Button>
+						{nameSaved && (
+							<span className="pb-2 text-sm text-[var(--dashboard-completed)]">
+								Saved.
+							</span>
+						)}
+						{nameError && (
+							<span className="pb-2 text-sm text-destructive">{nameError}</span>
+						)}
+					</Form>
+				</section>
+
+				<section className={cardClass}>
 					<h2 className={cardTitleClass}>Account information</h2>
 					<dl className="mt-4 divide-y divide-border/60 text-sm">
-						{loaderData.name && (
-							<div className="flex justify-between py-2.5">
-								<dt className="text-muted-foreground">Name</dt>
-								<dd className="text-foreground">{loaderData.name}</dd>
-							</div>
-						)}
 						<div className="flex justify-between py-2.5">
 							<dt className="text-muted-foreground">Email</dt>
 							<dd className="text-foreground">{loaderData.email}</dd>
