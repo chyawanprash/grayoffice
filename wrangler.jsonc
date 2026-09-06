@@ -9,11 +9,15 @@
 		"enabled": true
 	},
 	// Non-secret vars. Secrets (SESSION_SECRET, GOOGLE_CLIENT_ID,
-	// GOOGLE_CLIENT_SECRET, RESEND_API_KEY) are set with `wrangler secret put`.
+	// GOOGLE_CLIENT_SECRET, RESEND_API_KEY, PINECONE_API_KEY) are set with
+	// `wrangler secret put`.
 	"vars": {
 		"APP_URL": "https://grayoffice.app",
 		"RESEND_FROM": "Gray Office <login@grayoffice.app>",
-		"BANK_URL": "https://bank.grayoffice.app"
+		"BANK_URL": "https://bank.grayoffice.app",
+		// Pinecone index name - created automatically on first use (dense, 768,
+		// cosine, serverless aws/us-east-1). Only PINECONE_API_KEY is a secret.
+		"PINECONE_INDEX": "grayoffice"
 	},
 	"ai": {
 		"binding": "AI",
