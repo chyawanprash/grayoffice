@@ -461,6 +461,31 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 					</div>
 				</section>
 
+				{loaderData.canManageOrg && (
+					<section className={cardClass}>
+						<h2 className={cardTitleClass}>Developer tools · {loaderData.orgName}</h2>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Dummy data population adds a button on the Invoices page that generates
+							synthetic invoice PDFs (via bank.grayoffice), files them as invoices,
+							saves the originals in Documents, and feeds them into the knowledge base
+							and memory graph.
+						</p>
+						<Form method="post" className="mt-3 flex items-center gap-3">
+							<input type="hidden" name="intent" value="toggle-dummy" />
+							<input type="hidden" name="on" value={loaderData.dummyData ? "0" : "1"} />
+							<Button type="submit" size="sm" variant={loaderData.dummyData ? "outline" : "primary"} disabled={busy}>
+								{loaderData.dummyData ? "Disable dummy data population" : "Enable dummy data population"}
+							</Button>
+							<span className="text-sm text-muted-foreground">
+								Currently {loaderData.dummyData ? "on" : "off"}.
+							</span>
+							{actionData && "ok" in actionData && actionData.ok === "dummy" && (
+								<span className="text-sm text-[var(--dashboard-completed)]">Saved.</span>
+							)}
+						</Form>
+					</section>
+				)}
+
 				<section className={`${cardClass} border border-destructive/30`}>
 					<h2 className={`${cardTitleClass} text-destructive`}>Delete account</h2>
 					<p className="mt-1 text-sm text-muted-foreground">

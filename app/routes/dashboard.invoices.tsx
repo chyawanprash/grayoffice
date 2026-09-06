@@ -3,9 +3,21 @@ import { Form, Link, useNavigation } from "react-router";
 import type { Route } from "./+types/dashboard.invoices";
 import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
-import { getInvoice, listInvoices, setInvoiceStatus } from "~/lib/ledger.server";
+import { getInvoice, getOrgProfile, listInvoices, setInvoiceStatus } from "~/lib/ledger.server";
+import { queueExtraction } from "~/lib/docs.server";
+import { queueKbIngest } from "~/lib/kb.server";
 import { formatMoney } from "~/lib/money";
 import { Tag, type TagColor } from "~/components/ui/tag";
+
+/** Which synthetic invoices the "populate" button asks bank.grayoffice for. */
+const DUMMY_SET: { document_type: string; template: string; role: "supplier" | "customer" }[] = [
+	{ document_type: "gst_invoice", template: "modern", role: "supplier" },
+	{ document_type: "interstate_invoice", template: "traditional", role: "supplier" },
+	{ document_type: "gst_invoice", template: "erp_style", role: "customer" },
+	{ document_type: "intrastate_invoice", template: "spreadsheet_style", role: "customer" },
+	{ document_type: "reverse_charge_invoice", template: "scanned_style", role: "customer" },
+	{ document_type: "export_invoice", template: "modern", role: "supplier" },
+];
 
 export function meta() {
 	return [{ title: "Invoices | Gray Office" }];
@@ -52,6 +64,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 	return {
 		currency: org.currency,
+		dummyData: Boolean(org.dummy_data),
 		view: VIEWS.some((v) => v.key === view) ? view : "all",
 		rows: all.filter((i) => inView(i, view)),
 		counts,
@@ -60,14 +73,47 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
-	const { orgId } = await requireOrg(request, context.cloudflare.env);
+	const env = context.cloudflare.env;
+	const { orgId, org } = await requireOrg(request, env);
 	const form = await request.formData();
-	await setInvoiceStatus(
-		context.cloudflare.env.DB,
-		orgId,
-		String(form.get("id")),
-		String(form.get("status")),
-	);
+
+	if (form.get("intent") === "populate") {
+		if (!org.dummy_data) return { error: "Enable dummy data population in Settings first." };
+		const profile = await getOrgProfile(env.DB, orgId);
+		const base = (env.BANK_URL ?? "https://bank.grayoffice.app").replace(/\/$/, "");
+		let queued = 0;
+		for (const cfg of DUMMY_SET) {
+			try {
+				const res = await fetch(`${base}/generate`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						jurisdiction: "IN",
+						document_type: cfg.document_type,
+						template: cfg.template,
+						format: "pdf",
+						self: {
+							role: cfg.role,
+							legal_name: org.name,
+							gstin: profile.tax_id || undefined,
+							state: profile.home_state || undefined,
+						},
+					}),
+				});
+				if (!res.ok) continue;
+				const bytes = await res.arrayBuffer();
+				const name = `${cfg.role === "supplier" ? "sale" : "purchase"}-${cfg.document_type}-${cfg.template}.pdf`;
+				await queueExtraction(env, orgId, name, bytes); // -> Documents -> auto draft invoice
+				await queueKbIngest(env, orgId, name, bytes.slice(0)); // -> knowledge base + memory graph
+				queued++;
+			} catch {
+				/* skip this one */
+			}
+		}
+		return { ok: "populated" as const, queued };
+	}
+
+	await setInvoiceStatus(env.DB, orgId, String(form.get("id")), String(form.get("status")));
 	return { ok: true };
 }
 
@@ -78,11 +124,12 @@ const statusColor: Record<string, TagColor> = {
 	void: "red",
 };
 
-export default function Invoices({ loaderData }: Route.ComponentProps) {
-	const { currency, view, rows, counts, detail } = loaderData;
+export default function Invoices({ loaderData, actionData }: Route.ComponentProps) {
+	const { currency, dummyData, view, rows, counts, detail } = loaderData;
 	const fmt = (n: number) => formatMoney(n, currency);
 	const nav = useNavigation();
 	const busy = nav.formData != null;
+	const populating = nav.formData?.get("intent") === "populate";
 	const [openId, setOpenId] = useState<string | null>((detail?.id as string) ?? null);
 	const total = rows.reduce((a, i) => a + i.total, 0);
 
@@ -96,10 +143,31 @@ export default function Invoices({ loaderData }: Route.ComponentProps) {
 						or process one from a PDF.
 					</p>
 				</div>
-				<Button render={<Link to="/dashboard/assistant" />} size="sm" variant="outline">
-					New invoice →
-				</Button>
+				<div className="flex items-center gap-2">
+					{dummyData && (
+						<Form method="post">
+							<input type="hidden" name="intent" value="populate" />
+							<Button type="submit" size="sm" variant="outline" disabled={busy}>
+								{populating ? "Generating…" : "Populate dummy invoices"}
+							</Button>
+						</Form>
+					)}
+					<Button render={<Link to="/dashboard/assistant" />} size="sm" variant="outline">
+						New invoice →
+					</Button>
+				</div>
 			</div>
+
+			{actionData && "error" in actionData && actionData.error && (
+				<p className="mb-4 rounded-lg border border-destructive/30 bg-[color-mix(in_oklch,var(--destructive)_10%,transparent)] px-3 py-2 text-sm text-destructive">
+					{actionData.error}
+				</p>
+			)}
+			{actionData && "ok" in actionData && actionData.ok === "populated" && (
+				<p className="mb-4 rounded-lg border border-[var(--dashboard-completed)]/30 bg-[color-mix(in_oklch,var(--dashboard-completed)_10%,transparent)] px-3 py-2 text-sm text-[var(--dashboard-completed)]">
+					Generated {actionData.queued} synthetic invoice(s). They'll appear here, in Documents, and in the knowledge base as processing completes.
+				</p>
+			)}
 
 			{/* ── cards ── */}
 			<div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
