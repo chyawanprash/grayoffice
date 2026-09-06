@@ -623,10 +623,12 @@ export async function invoiceAnalytics(db: D1Database, orgId: string) {
 			"SELECT status, COUNT(*) AS count, SUM(total_cents) AS total_cents FROM invoices WHERE org_id = ? GROUP BY status",
 		).bind(orgId).all<{ status: string; count: number; total_cents: number }>(),
 		db.prepare(
-			`SELECT SUM(l.cgst_cents) AS cgst, SUM(l.sgst_cents) AS sgst, SUM(l.igst_cents) AS igst
+			`SELECT i.direction AS direction,
+			        SUM(l.cgst_cents) AS cgst, SUM(l.sgst_cents) AS sgst, SUM(l.igst_cents) AS igst
 			 FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id
-			 WHERE i.org_id = ? AND i.status != 'void'`,
-		).bind(orgId).first<{ cgst: number | null; sgst: number | null; igst: number | null }>(),
+			 WHERE i.org_id = ? AND i.status != 'void'
+			 GROUP BY i.direction`,
+		).bind(orgId).all<{ direction: string; cgst: number | null; sgst: number | null; igst: number | null }>(),
 		db.prepare(
 			"SELECT COUNT(*) AS count, COALESCE(SUM(total_cents),0) AS total_cents FROM invoices WHERE org_id = ? AND status != 'void'",
 		).bind(orgId).first<{ count: number; total_cents: number }>(),
@@ -642,10 +644,24 @@ export async function invoiceAnalytics(db: D1Database, orgId: string) {
 	}
 	const months = [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
 
+	// GST output (collected on sales, owed to govt) vs input credit (paid on purchases).
+	const gstRow = (dir: string) => (gst.results ?? []).find((g) => g.direction === dir);
+	const gstSide = (dir: string) => {
+		const g = gstRow(dir);
+		const cgst = g?.cgst ?? 0, sgst = g?.sgst ?? 0, igst = g?.igst ?? 0;
+		return { cgst: inr(cgst), sgst: inr(sgst), igst: inr(igst), total: inr(cgst + sgst + igst) };
+	};
+	const output = gstSide("receivable");
+	const input = gstSide("payable");
+
 	return {
 		months,
 		status: (status.results ?? []).map((s) => ({ ...s, total: inr(s.total_cents ?? 0) })),
-		gst: { cgst: inr(gst?.cgst ?? 0), sgst: inr(gst?.sgst ?? 0), igst: inr(gst?.igst ?? 0) },
+		gst: {
+			output, // collected on sales — payable to the government
+			input, // paid on purchases — input tax credit
+			net_payable: output.total - input.total,
+		},
 		total_count: totals?.count ?? 0,
 		total_value: inr(totals?.total_cents ?? 0),
 	};
@@ -655,7 +671,18 @@ export async function invoiceAnalytics(db: D1Database, orgId: string) {
 
 const FRAUD_ROUND = (cents: number) => cents % 100000 === 0 && cents >= 5000000; // exact ₹50k+ multiples
 
-export async function processInvoiceDocument(env: Env, orgId: string, docId: string, direction: "receivable" | "payable" = "payable") {
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const nameMatch = (a: string, b: string) => {
+	const x = norm(a), y = norm(b);
+	return x.length > 3 && y.length > 3 && (x.includes(y) || y.includes(x));
+};
+
+export async function processInvoiceDocument(
+	env: Env,
+	orgId: string,
+	docId: string,
+	direction: "receivable" | "payable" | "auto" = "auto",
+) {
 	const db = env.DB;
 	const doc = await getExtract(db, orgId, docId);
 	if (!doc || doc.status !== "ready") return { error: "document not extracted yet" };
@@ -666,15 +693,48 @@ export async function processInvoiceDocument(env: Env, orgId: string, docId: str
 		return { error: "could not read extracted data" };
 	}
 
-	const companyName = String(data.vendor || data.supplier || data.seller || data.company || data.bill_from || data.from || "Unknown vendor").slice(0, 160);
+	const flags: string[] = [];
+
+	// The two parties, from whatever keys the extractor used.
+	const sellerName = String(data.supplier || data.seller || data.vendor || data.bill_from || data.from || data.supplier_name || "").trim();
+	const buyerName = String(data.customer || data.buyer || data.bill_to || data.ship_to || data.recipient || data.buyer_name || data.billed_to || "").trim();
+	const sellerGstin = String(data.supplier_gstin || data.seller_gstin || data.vendor_gstin || data.gstin || "").trim();
+	const buyerGstin = String(data.customer_gstin || data.buyer_gstin || data.recipient_gstin || "").trim();
+
+	// Which side are we? Match the org's own name / GSTIN against each party.
+	const orgRow = await db.prepare("SELECT name FROM organizations WHERE id = ?").bind(orgId).first<{ name: string }>();
+	const profile = await getOrgProfile(db, orgId);
+	const orgName = orgRow?.name ?? "";
+	const orgGstin = (profile.tax_id ?? "").trim();
+
+	if (direction === "auto") {
+		const weAreSeller =
+			(orgGstin && sellerGstin && norm(orgGstin) === norm(sellerGstin)) ||
+			(orgName && sellerName && nameMatch(orgName, sellerName));
+		const weAreBuyer =
+			(orgGstin && buyerGstin && norm(orgGstin) === norm(buyerGstin)) ||
+			(orgName && buyerName && nameMatch(orgName, buyerName));
+		if (weAreSeller && !weAreBuyer) direction = "receivable";
+		else if (weAreBuyer && !weAreSeller) direction = "payable";
+		else {
+			direction = "payable";
+			flags.push(`couldn't confirm from the document whether ${orgName || "we"} are the seller or the buyer — filed as a purchase; change the direction if wrong`);
+		}
+	}
+
+	// The counterparty is the other side.
+	const counterparty = direction === "receivable"
+		? { name: buyerName, gstin: buyerGstin, role: "customer" as const }
+		: { name: sellerName, gstin: sellerGstin, role: "vendor" as const };
+
+	const companyName = (counterparty.name || data.company || "Unknown party").slice(0, 160);
 	const number = String(data.invoice_number || data.invoice_no || data.number || data.bill_number || `DOC-${docId.slice(0, 8)}`);
 	const total = Number(String(data.total || data.grand_total || data.amount_due || data.total_amount || 0).replace(/[^0-9.]/g, "")) || 0;
-	const gstin = String(data.gstin || data.gst_number || data.vendor_gstin || "").trim() || undefined;
-	const state = String(data.state || data.place_of_supply || data.ship_to_state || "").trim() || undefined;
+	const gstin = counterparty.gstin || undefined;
+	const state = String(data.state || data.place_of_supply || data.ship_to_state || data.buyer_state || "").trim() || undefined;
 
-	const company = await upsertCompany(db, orgId, { name: companyName, role: direction === "payable" ? "vendor" : "customer", gstin, state });
+	const company = await upsertCompany(db, orgId, { name: companyName, role: counterparty.role, gstin, state });
 
-	const flags: string[] = [];
 	const dupe = await db
 		.prepare("SELECT id, total_cents FROM invoices WHERE org_id = ? AND company_id = ? AND number = ?")
 		.bind(orgId, company.id, number)
