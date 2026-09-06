@@ -10,8 +10,8 @@
  * the app still runs locally without Pinecone.
  */
 
-const EMBED_MODEL = "@cf/baai/bge-base-en-v1.5"; // 768-dim
-const EMBED_DIM = 768;
+const EMBED_MODEL = "@cf/baai/bge-large-en-v1.5"; // 1024-dim (matches the Pinecone index)
+const EMBED_DIM = 1024;
 const API_VERSION = "2025-10";
 const CONTROL_PLANE = "https://api.pinecone.io";
 const DEFAULT_INDEX = "grayoffice";
@@ -73,7 +73,10 @@ async function createIndex(env: ConfiguredEnv): Promise<void> {
 
 /** The data-plane host for our index, creating the index if it doesn't exist. */
 async function resolveHost(env: ConfiguredEnv): Promise<string> {
-	if (env.PINECONE_HOST) return env.PINECONE_HOST;
+	// Only honour PINECONE_HOST when it's an actual data-plane host, not an
+	// index name accidentally put here (the index name belongs in PINECONE_INDEX).
+	if (env.PINECONE_HOST && (env.PINECONE_HOST.includes(".") || env.PINECONE_HOST.startsWith("http")))
+		return env.PINECONE_HOST;
 
 	const name = indexName(env);
 	const cached = hostCache.get(name);

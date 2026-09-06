@@ -329,3 +329,99 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
 	.ai-lights[data-playing="true"] .ai-lights-layer { animation: none; }
 }
+/* ══════════════════════════════════════════════════════════════════════════
+ * AI chat-state components (app/components/ai/*). Design tokens + keyframes
+ * ported from context/ai-features/chat-states.md, mapped onto the app theme.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+	--color-ink-2: #55555a;
+	--color-ink-3: #8a8a90;
+	--color-line: #e6e6e8;
+	--color-line-strong: #d2d2d6;
+	--color-hover: #f2f2f3;
+	--color-hover-2: #f6f6f7;
+	--color-field: #f4f4f5;
+	--color-inset: #f1f1f2;
+	--color-green: #16a34a;
+	--color-green-tint: #dcfce7;
+	--color-red: #dc2626;
+	--color-red-tint: #fee2e2;
+	--color-orange: #ea7317;
+	--color-aic: #4f46e5;
+
+	--radius-control: 8px;
+	--radius-card: 14px;
+	--radius-chip: 6px;
+
+	--shadow-hairline: 0 0 0 1px rgba(0, 0, 0, 0.06);
+	--shadow-btn: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+	--shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.05);
+	--shadow-raised: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.12);
+	--shadow-overlay: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 10px 34px rgba(0, 0, 0, 0.18);
+}
+
+.dark {
+	--color-ink-2: #b2b2b8;
+	--color-ink-3: #7d7d85;
+	--color-line: #2a2a2e;
+	--color-line-strong: #3a3a40;
+	--color-hover: #202024;
+	--color-hover-2: #1c1c20;
+	--color-field: #1a1a1d;
+	--color-inset: #202024;
+	--color-green: #4ade80;
+	--color-green-tint: #052e1a;
+	--color-red: #f87171;
+	--color-red-tint: #3a1113;
+	--color-orange: #fb923c;
+	--color-aic: #818cf8;
+}
+
+:root {
+	--ink: var(--color-ink);
+	--ink-2: var(--color-ink-2);
+	--ink-3: var(--color-ink-3);
+	--line: var(--color-line);
+	--line-strong: var(--color-line-strong);
+	--surface: var(--color-surface);
+	--canvas: var(--color-canvas);
+	--hover: var(--color-hover);
+	--tooltip-bg: #1b1b1b;
+	--tooltip-muted: #a0a0a0;
+}
+
+@keyframes pixel-on { 0%, 100% { opacity: 0.15 } 45% { opacity: 1 } }
+@keyframes shimmer-text { to { background-position: -200% 0 } }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.9) } to { opacity: 1; transform: scale(1) } }
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes spin { to { transform: rotate(360deg) } }
+
+.primitive-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 6px;
+}
+.primitive-card-pad { padding: 0.875rem; }
+.primitive-card-footer {
+	padding: 0.5rem 0.75rem;
+	border-top: 1px solid var(--line);
+}
+.animated-underline {
+	background-image: linear-gradient(currentColor, currentColor);
+	background-size: 0% 1px;
+	background-position: 0 100%;
+	background-repeat: no-repeat;
+	transition: background-size 200ms ease;
+}
+a:hover > .animated-underline,
+.animated-underline:hover { background-size: 100% 1px; }
+.source-avatar { object-fit: cover; }
+
+@media (prefers-reduced-motion: reduce) {
+	.ai-reduce-motion * { animation-duration: 0.001ms !important; }
+}

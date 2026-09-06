@@ -26,3 +26,4 @@ PINECONE_INDEX_HOST="https://your-index-xxxx.svc.your-env.pinecone.io"
 # grayoffice does the AI routing + PDF->JSON + audit logging.
 # Generate: openssl rand -hex 32
 BOT_INGEST_TOKEN="dev-bot-ingest-token-change-me"
+
