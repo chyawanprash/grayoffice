@@ -10,7 +10,18 @@
  */
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
-import { handleInbound, type InboundFile } from "./bot-router";
+import { streamSSE } from "hono/streaming";
+import { askAgent, handleInbound, type InboundFile } from "./bot-router";
+import { createFinanceAgent } from "~/lib/agent.server";
+import { queueKbIngest } from "~/lib/kb.server";
+import { queueExtraction } from "~/lib/docs.server";
+
+/** kb.server / docs.server need the R2 + queue bindings; they exist at runtime
+ * (wrangler.jsonc) but the checked-in worker-configuration.d.ts lags. */
+type PipelineEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
+
+const isPdf = (f: { name?: string; mime?: string }) =>
+	/\.pdf$/i.test(f.name ?? "") || f.mime === "application/pdf";
 
 const SOURCES = ["telegram", "slack", "discord"] as const;
 type Source = (typeof SOURCES)[number];
@@ -80,6 +91,38 @@ botCompatRoutes.post("/ingest", async (c) => {
 		mime: f.mime,
 	}));
 
+	// Documents from a linked user: fetch the bytes once, and in the background
+	// push them to R2 + the KB pipeline (chunk → embeddings → Pinecone memories,
+	// and PDF → structured JSON → draft invoice, each writing its own D1 rows).
+	// We reuse the fetched bytes for the synchronous pdf-to-json reply below.
+	const kbQueued: string[] = [];
+	if (link?.org_id && files.some(isPdf)) {
+		const env = c.env as PipelineEnv;
+		for (const f of files) {
+			if (!isPdf(f) || !f.url) continue;
+			try {
+				const res = await fetch(f.url);
+				if (!res.ok) continue;
+				const bytes = await res.arrayBuffer();
+				f.blob = new Blob([bytes], { type: "application/pdf" }); // reuse for the sync reply
+				f.url = undefined;
+				kbQueued.push(f.name);
+				c.executionCtx.waitUntil(
+					Promise.allSettled([
+						queueKbIngest(env, link.org_id, f.name, bytes),
+						queueExtraction(env, link.org_id, f.name, bytes),
+					]).then((r) => {
+						for (const x of r)
+							if (x.status === "rejected")
+								console.error(`bot ingest pipeline (${f.name}): ${x.reason}`);
+					}),
+				);
+			} catch (err) {
+				console.error(`bot ingest fetch (${f.name}): ${err}`);
+			}
+		}
+	}
+
 	const result = await handleInbound(c.env, {
 		source: b.source,
 		orgId: link?.org_id ?? null,
@@ -89,7 +132,102 @@ botCompatRoutes.post("/ingest", async (c) => {
 		files,
 	});
 
-	return c.json(result);
+	return c.json(kbQueued.length ? { ...result, kb: { queued: kbQueued } } : result);
+});
+
+/* ─────────────────────────────────────────────── streaming ask (live steps) */
+
+type LinkRow = { user_id: string; org_id: string };
+
+async function resolveLink(
+	db: D1Database,
+	source: Source,
+	externalUser: string | null | undefined,
+): Promise<LinkRow | null> {
+	if (!externalUser) return null;
+	return db
+		.prepare("SELECT user_id, org_id FROM bot_links WHERE source = ? AND external_user = ?")
+		.bind(source, externalUser)
+		.first<LinkRow>();
+}
+
+/**
+ * Like /ingest but text-only and Server-Sent-Events: emits `step` events as the
+ * agent calls tools, then a final `done` event with the answer. Bots edit their
+ * message on each event so the user watches the work happen.
+ */
+botCompatRoutes.post("/ingest/stream", tokenGate, async (c) => {
+	const b = await c.req.json<IngestBody>().catch(() => null);
+	if (!b || !isSource(b.source) || !b.text?.trim())
+		return c.json({ error: "source and text are required" }, 400);
+	const source = b.source;
+	const text = b.text.trim();
+	const link = await resolveLink(c.env.DB, source, b.externalUser);
+
+	const eventId = crypto.randomUUID();
+	await c.env.DB.prepare(
+		`INSERT INTO bot_events (id, org_id, source, external_user, kind, summary, route, status)
+		 VALUES (?, ?, ?, ?, 'message', ?, 'ask', 'routed')`,
+	)
+		.bind(eventId, link?.org_id ?? null, source, b.externalUser ?? null, text.slice(0, 140))
+		.run();
+
+	const settle = (status: "done" | "error", detail: unknown) =>
+		c.env.DB.prepare(
+			"UPDATE bot_events SET status = ?, detail = ?, updated_at = unixepoch() WHERE id = ?",
+		)
+			.bind(status, JSON.stringify(detail), eventId)
+			.run();
+
+	return streamSSE(c, async (stream) => {
+		const send = (event: string, data: unknown) =>
+			stream.writeSSE({ event, data: JSON.stringify(data) });
+
+		// Not linked → no org/user context, so just the lightweight fallback.
+		if (!link?.org_id || !link.user_id) {
+			const { reply } = await askAgent(c.env, {
+				source,
+				externalUser: b.externalUser ?? null,
+				text,
+				files: [],
+			});
+			await send("done", { text: reply, linked: false });
+			await settle("done", { reply });
+			return;
+		}
+
+		try {
+			await send("step", { kind: "start" });
+			const agent = createFinanceAgent(c.env, {
+				userId: link.user_id,
+				orgId: link.org_id,
+			});
+			const res = await agent.stream({
+				prompt: `[Message from ${source}] ${text}`.slice(0, 8000),
+			});
+
+			let wroteWriting = false;
+			for await (const part of res.fullStream) {
+				if (part.type === "tool-call") {
+					await send("step", { kind: "tool", name: part.toolName });
+				} else if (part.type === "text-delta" && !wroteWriting) {
+					wroteWriting = true;
+					await send("step", { kind: "writing" });
+				} else if (part.type === "error") {
+					await send("step", { kind: "error", message: String(part.error) });
+				}
+			}
+
+			const answer =
+				(await res.text).trim() || "I couldn't produce an answer to that.";
+			await send("done", { text: answer, linked: true });
+			await settle("done", { reply: answer });
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			await send("done", { text: `Sorry, that failed: ${message}`, linked: true });
+			await settle("error", { error: message });
+		}
+	});
 });
 
 botCompatRoutes.post("/link/start", async (c) => {
