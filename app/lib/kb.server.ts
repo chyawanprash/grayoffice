@@ -12,8 +12,10 @@ import {
 	queryNamespace,
 	upsertChunks,
 } from "./pinecone.server";
+import { stageUpload } from "./docs.server";
 
 type Env = { AI: Ai; DB: D1Database; PINECONE_API_KEY?: string; PINECONE_HOST?: string };
+type QueueEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
 
 const ns = (orgId: string) => `kb_${orgId}`;
 const CHUNK = 1000;
@@ -86,6 +88,25 @@ export async function ingestPdf(
 			.run();
 		throw err;
 	}
+}
+
+/** Create a `kb_documents` row, stage the PDF in R2, queue it for indexing. */
+export async function queueKbIngest(
+	env: QueueEnv,
+	orgId: string,
+	name: string,
+	bytes: ArrayBuffer,
+): Promise<string> {
+	const docId = crypto.randomUUID();
+	const safeName = name.slice(0, 200);
+	const r2Key = await stageUpload(env.DOCS_BUCKET, bytes);
+	await env.DB.prepare(
+		"INSERT INTO kb_documents (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
+	)
+		.bind(docId, orgId, safeName, bytes.byteLength)
+		.run();
+	await env.KB_QUEUE.send({ kind: "kb", orgId, docId, name: safeName, r2Key });
+	return docId;
 }
 
 export async function deleteDoc(env: Env, orgId: string, docId: string): Promise<void> {

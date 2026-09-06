@@ -51,7 +51,7 @@ export function Logo({
 				alt="Gray Office"
 				width={28}
 				height={28}
-				className="size-7 shrink-0 rounded-[7px]"
+				className="size-7 shrink-0 rounded-lg"
 			/>
 			{wordmark && (
 				<span>

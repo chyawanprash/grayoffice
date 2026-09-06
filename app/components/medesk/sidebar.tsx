@@ -115,7 +115,7 @@ export function DashboardSidebar({
           aria-label="Gray Office home"
           className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-80 group-data-[collapsible=icon]:hidden"
         >
-          <img src="/logo.svg" alt="" width={28} height={28} className="size-7 shrink-0 rounded-[7px]" />
+          <img src="/logo.svg" alt="" width={28} height={28} className="size-7 shrink-0 rounded-lg" />
           <span className="flex min-w-0 flex-col leading-tight">
             <span className="truncate text-xl font-medium tracking-tight">
               Gray Office

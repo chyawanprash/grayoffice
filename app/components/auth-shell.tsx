@@ -60,7 +60,14 @@ export function AuthShell({
 				/>
 
 				<div className="relative z-10 flex items-center justify-between">
-					<span className="text-lg font-semibold tracking-tight text-white">
+					<span className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white">
+						<img
+							src="/logo.svg"
+							alt=""
+							width={28}
+							height={28}
+							className="size-7 rounded-lg ring-1 ring-white/20"
+						/>
 						Gray Office
 					</span>
 					<Link

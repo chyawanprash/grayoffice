@@ -9,7 +9,26 @@
  */
 
 type Env = { AI: Ai; DB: D1Database };
-type QueueEnv = Env & { KB_QUEUE: Queue };
+type QueueEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
+
+/* --------------------------------------------------- R2 staging for uploads */
+
+/** Put uploaded bytes in R2; the queue message carries only the returned key
+ * (a queue message maxes out at 128 KB, so PDF bytes cannot go inline). */
+export async function stageUpload(bucket: R2Bucket, bytes: ArrayBuffer): Promise<string> {
+	const key = `uploads/${crypto.randomUUID()}.pdf`;
+	await bucket.put(key, bytes);
+	return key;
+}
+
+export async function readStaged(bucket: R2Bucket, key: string): Promise<ArrayBuffer | null> {
+	const obj = await bucket.get(key);
+	return obj ? obj.arrayBuffer() : null;
+}
+
+export async function discardStaged(bucket: R2Bucket, key: string): Promise<void> {
+	await bucket.delete(key).catch(() => {});
+}
 
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 
@@ -50,14 +69,6 @@ export async function deleteExtract(db: D1Database, orgId: string, id: string): 
 	await db.prepare("DELETE FROM doc_extracts WHERE id = ? AND org_id = ?").bind(id, orgId).run();
 }
 
-function bytesToB64(bytes: ArrayBuffer): string {
-	let bin = "";
-	const u8 = new Uint8Array(bytes);
-	for (let i = 0; i < u8.length; i += 0x8000)
-		bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
-	return btoa(bin);
-}
-
 /**
  * Create a `doc_extracts` row and queue the PDF for extraction. Shared by the
  * Documents page and the agent's saveDocumentFromUrl / chat-attachment paths.
@@ -71,18 +82,13 @@ export async function queueExtraction(
 ): Promise<string> {
 	const docId = crypto.randomUUID();
 	const safeName = name.slice(0, 200);
+	const r2Key = await stageUpload(env.DOCS_BUCKET, bytes);
 	await env.DB.prepare(
 		"INSERT INTO doc_extracts (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
 	)
 		.bind(docId, orgId, safeName, bytes.byteLength)
 		.run();
-	await env.KB_QUEUE.send({
-		kind: "extract",
-		orgId,
-		docId,
-		name: safeName,
-		dataB64: bytesToB64(bytes),
-	});
+	await env.KB_QUEUE.send({ kind: "extract", orgId, docId, name: safeName, r2Key });
 	return docId;
 }
 

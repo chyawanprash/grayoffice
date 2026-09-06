@@ -37,11 +37,19 @@ botRoutes.post("/ingest", async (c) => {
 		source: b.source,
 		externalUser: b.externalUser ?? null,
 		text: b.text ?? "",
-		files: (b.files ?? []).map((f) => ({
-			name: f.name ?? "file",
-			url: f.url,
-			mime: f.mime,
-		})),
+		files: (b.files ?? []).map((f) => {
+			// A file may arrive as a platform URL or as inline base64 bytes
+			// (Slack / Telegram file URLs need auth, so bytes are more reliable).
+			const raw = (f as { dataB64?: string }).dataB64;
+			let blob: Blob | undefined;
+			if (raw) {
+				const bin = atob(raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw);
+				const bytes = new Uint8Array(bin.length);
+				for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+				blob = new Blob([bytes], { type: f.mime ?? "application/pdf" });
+			}
+			return { name: f.name ?? "file", url: f.url, mime: f.mime, blob };
+		}),
 	});
 
 	return c.json(result);

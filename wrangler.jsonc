@@ -40,6 +40,14 @@
 			"migrations_dir": "./migrations"
 		}
 	],
+	// Uploaded PDFs (Documents + knowledge base). Queue messages carry only the
+	// R2 key - the bytes never go through a 128 KB queue message.
+	"r2_buckets": [
+		{
+			"binding": "DOCS_BUCKET",
+			"bucket_name": "grayoffice-docs"
+		}
+	],
 	"queues": {
 		"producers": [
 			{
