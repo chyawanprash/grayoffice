@@ -5,7 +5,7 @@ import {
   MoonIcon,
   SunIcon,
 } from 'lucide-react'
-import { useFetcher } from 'react-router'
+import { Link, useFetcher } from 'react-router'
 import { Avatar, AvatarFallback } from '~/components/ui/avatar'
 import { MedeskLogo } from './logo'
 import { SidebarCollapseIcon } from './icons'
@@ -97,12 +97,16 @@ export function DashboardSidebar({ user }: { user: SidebarUser }) {
   return (
     <Sidebar collapsible="icon" className="border-r-0!">
       <SidebarHeader className="relative h-20 flex-row items-center justify-between gap-3 px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-        <div className="flex min-w-0 items-center gap-3 transition-opacity group-data-[collapsible=icon]:hidden">
+        <Link
+          to="/"
+          aria-label="Gray Office home"
+          className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-80 group-data-[collapsible=icon]:hidden"
+        >
           <MedeskLogo className="size-7 shrink-0" />
           <span className="truncate text-xl font-medium tracking-tight">
             Gray Office
           </span>
-        </div>
+        </Link>
         <Button
           variant="ghost"
           onClick={toggleSidebar}
