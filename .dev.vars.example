@@ -27,3 +27,51 @@ PINECONE_INDEX_HOST="https://your-index-xxxx.svc.your-env.pinecone.io"
 # Generate: openssl rand -hex 32
 BOT_INGEST_TOKEN="dev-bot-ingest-token-change-me"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared chat-bot integrations (ONE Gray Office app per platform).
+#
+# Customers never create a Discord/Slack app or paste a bot token. They click
+# "Connect" in /dashboard/integrations and do an OAuth install (Discord, Slack)
+# or a /start deep link (Telegram). All bot credentials below are OURS and live
+# only here / in `wrangler secret put`.
+#
+# Per-org rows in `bot_integrations` then hold only non-secret context
+# (guild/team id + name, and Slack's per-workspace xoxb token from OAuth).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Discord — one application at https://discord.com/developers/applications
+#   • General Information → Application ID  → DISCORD_CLIENT_ID
+#   • General Information → Public Key      → DISCORD_PUBLIC_KEY   (verifies interactions)
+#   • OAuth2 → Client Secret               → DISCORD_CLIENT_SECRET (install code exchange)
+#   • Bot → Reset Token                    → DISCORD_BOT_TOKEN     (sends replies, registers commands)
+#   • Bot → enable MESSAGE CONTENT INTENT
+#   • Set Interactions Endpoint URL to:  <APP_URL>/api/bots/discord
+#   • OAuth2 redirect URL:               <APP_URL>/api/integrations/discord/callback
+DISCORD_CLIENT_ID=""
+DISCORD_CLIENT_SECRET=""
+DISCORD_BOT_TOKEN=""
+DISCORD_PUBLIC_KEY=""
+
+# Slack — one app at https://api.slack.com/apps, "Activate Public Distribution"
+#   • Basic Information → App Credentials → Client ID / Client Secret / Signing Secret
+#   • Bot Token Scopes: app_mentions:read, chat:write, im:history, files:read, commands
+#   • Event Subscriptions Request URL:  <APP_URL>/api/bots/slack
+#   • OAuth redirect URL:               <APP_URL>/api/integrations/slack/callback
+#   (the per-workspace xoxb- token is returned by OAuth on install and stored
+#    sealed per org — never entered by the customer)
+SLACK_CLIENT_ID=""
+SLACK_CLIENT_SECRET=""
+SLACK_SIGNING_SECRET=""
+
+# Telegram — one bot from @BotFather (e.g. @GrayOfficeBot)
+#   • BotFather token                    → TELEGRAM_BOT_TOKEN
+#   • Any random string for webhook auth → TELEGRAM_WEBHOOK_SECRET  (openssl rand -hex 32)
+#   • Webhook is registered once, globally, to: <APP_URL>/api/bots/telegram
+#   • Connect flow: dashboard makes a one-time token, user opens
+#     https://t.me/GrayOfficeBot?start=<token>, bot gets /start <token>
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_WEBHOOK_SECRET=""
+
+# Public bot username for the Telegram deep link (no @).
+TELEGRAM_BOT_USERNAME="GrayOfficeBot"
+

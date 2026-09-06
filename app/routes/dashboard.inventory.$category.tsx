@@ -6,6 +6,8 @@ import type { Route } from "./+types/dashboard.inventory.$category";
 import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
 import { addInventoryItem, deleteInventoryItem, inventoryGrid } from "~/lib/inventory.server";
+import { formatMoney } from "~/lib/money";
+import { Tag, type TagColor } from "~/components/ui/tag";
 
 const CATEGORIES = ["software", "hardware", "consumables", "services", "other"];
 const MONTHS = [
@@ -13,14 +15,13 @@ const MONTHS = [
 	"July", "August", "September", "October", "November", "December",
 ];
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export function meta({ params }: Route.MetaArgs) {
 	return [{ title: `${params.category} inventory | Gray Office` }];
 }
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
-	const { orgId } = await requireOrg(request, context.cloudflare.env);
+	const { orgId, org } = await requireOrg(request, context.cloudflare.env);
 	const category = String(params.category);
 	if (!CATEGORIES.includes(category)) throw redirect("/dashboard/inventory");
 	const now = new Date();
@@ -31,7 +32,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 	const grid = await inventoryGrid(context.cloudflare.env.DB, orgId, year, category);
 	const group = grid.categories[0] ?? { category, items: [], months: new Array(12).fill(0), total: 0 };
-	return { category, year, month, thisYear: now.getFullYear(), group };
+	return { category, year, month, currency: org.currency, thisYear: now.getFullYear(), group };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -67,15 +68,20 @@ const inputCls =
 const selectCls =
 	"h-9 rounded-lg border border-border bg-card px-2.5 text-sm font-medium text-foreground outline-none focus:border-brand";
 
-function billing(it: { kind: string; cadence: string; amount_cents: number; quantity: number }) {
-	const unit = inr(it.amount_cents / 100);
-	const qty = it.quantity > 1 ? ` ×${it.quantity}` : "";
-	if (it.kind === "purchase") return `One-off${qty} · ${unit}`;
-	return `${it.cadence === "yearly" ? "Yearly" : "Monthly"}${qty} · ${unit}`;
+function typeMeta(it: { kind: string; cadence: string }): { label: string; color: TagColor } {
+	if (it.kind === "purchase") return { label: "one-off", color: "purple" };
+	if (it.cadence === "yearly") return { label: "yearly", color: "indigo" };
+	return { label: "monthly", color: "blue" };
+}
+
+function priceLabel(it: { amount_cents: number; quantity: number }, currency: string) {
+	const unit = formatMoney(it.amount_cents / 100, currency);
+	return `${unit}${it.quantity > 1 ? ` ×${it.quantity}` : ""}`;
 }
 
 export default function InventoryCategory({ loaderData, actionData }: Route.ComponentProps) {
-	const { category, year, month, thisYear, group } = loaderData;
+	const { category, year, month, currency, thisYear, group } = loaderData;
+	const inr = (n: number) => formatMoney(n, currency);
 	const nav = useNavigation();
 	const navigate = useNavigate();
 	const busy = nav.formData != null;
@@ -158,7 +164,9 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 								<th className="w-10 text-center">#</th>
 								<th className="sticky left-0 z-10 bg-muted/40">Item</th>
 								<th>Vendor</th>
+								<th>Type</th>
 								<th>Billing</th>
+								<th>{monthItems.some((it) => it.kind === "purchase") ? "Purchased" : "Since"}</th>
 								<th className="text-right">{MONTHS_SHORT[month]} charge</th>
 								<th className="text-right">Year total</th>
 								<th className="w-12" />
@@ -172,7 +180,14 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 										{it.name}
 									</td>
 									<td className="text-muted-foreground">{it.vendor || "—"}</td>
-									<td className="text-muted-foreground">{billing(it)}</td>
+									<td>
+										{(() => {
+											const t = typeMeta(it);
+											return <Tag color={t.color}>{t.label}</Tag>;
+										})()}
+									</td>
+									<td className="tabular-nums text-muted-foreground">{priceLabel(it, currency)}</td>
+									<td className="tabular-nums text-muted-foreground">{it.start_date}</td>
 									<td className="text-right font-medium tabular-nums text-foreground">{inr(it.months[month])}</td>
 									<td className="text-right tabular-nums text-muted-foreground">{inr(it.total)}</td>
 									<td className="text-right">
@@ -195,7 +210,7 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 							))}
 							{monthItems.length === 0 && (
 								<tr>
-									<td colSpan={7} className="border-b border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
+									<td colSpan={9} className="border-b border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
 										No {category} spend in {MONTHS[month]} {year}.
 									</td>
 								</tr>
@@ -207,7 +222,7 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 								<td className="sticky left-0 z-10 bg-muted/40 text-muted-foreground">
 									{monthItems.length} record{monthItems.length === 1 ? "" : "s"}
 								</td>
-								<td /><td />
+								<td /><td /><td /><td />
 								<td className="text-right tabular-nums text-foreground">{inr(monthTotal)}</td>
 								<td className="text-right tabular-nums text-muted-foreground">{inr(group.total)}</td>
 								<td />
@@ -218,7 +233,7 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 			</section>
 
 			{/* ── Add item ── */}
-			<section ref={addRef} className="mt-6 rounded-xl border border-border bg-card p-4">
+			<section ref={addRef} className="mt-6 dash-card p-4">
 				<h2 className="mb-3 text-sm font-medium text-foreground">Add a {category} item</h2>
 				<Form method="post" className="grid gap-3 sm:grid-cols-2">
 					<Field label="Name" className="sm:col-span-2">
@@ -238,7 +253,7 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 							<option value="yearly">Yearly</option>
 						</select>
 					</Field>
-					<Field label="Amount (₹, per unit)">
+					<Field label="Amount (per unit)">
 						<input name="amount" type="number" min="0" step="0.01" required className={inputCls} />
 					</Field>
 					<Field label="Quantity">

@@ -4,6 +4,7 @@ import type { Route } from "./+types/dashboard.documents";
 import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
 import { deleteExtract, listExtracts, queueExtraction } from "~/lib/docs.server";
+import { getOrgProfile } from "~/lib/ledger.server";
 
 export function meta() {
 	return [{ title: "Documents | Gray Office" }];
@@ -21,13 +22,45 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
 	const env = context.cloudflare.env;
-	const { orgId } = await requireOrg(request, env);
+	const { orgId, org } = await requireOrg(request, env);
 	const form = await request.formData();
 	const intent = String(form.get("intent") ?? "upload");
 
 	if (intent === "delete") {
 		await deleteExtract(env, orgId, String(form.get("docId") ?? ""));
 		return { ok: "deleted" as const };
+	}
+
+	// Dev helper: ask the synthetic-data worker for a test GST invoice with our
+	// own company on one side, then run it through the extraction pipeline.
+	if (intent === "test-invoice") {
+		const weAre = form.get("role") === "buyer" ? "buyer" : "seller";
+		const profile = await getOrgProfile(env.DB, orgId);
+		const base = (env.BANK_URL ?? "https://bank.grayoffice.app").replace(/\/$/, "");
+		try {
+			const res = await fetch(`${base}/generate`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					jurisdiction: "IN",
+					document_type: "gst_invoice",
+					format: "pdf",
+					self: {
+						role: weAre === "seller" ? "supplier" : "customer",
+						legal_name: org.name,
+						gstin: profile.tax_id || undefined,
+						state: profile.home_state || undefined,
+					},
+				}),
+			});
+			if (!res.ok) return { error: `Generator returned ${res.status}` };
+			const bytes = await res.arrayBuffer();
+			const name = `test-${weAre === "seller" ? "sale" : "purchase"}-${Date.now()}.pdf`;
+			await queueExtraction(env, orgId, name, bytes);
+			return { ok: "queued" as const, queued: 1, skipped: [] as string[] };
+		} catch (err) {
+			return { error: err instanceof Error ? err.message : String(err) };
+		}
 	}
 
 	const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
@@ -93,7 +126,7 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 				</p>
 			)}
 
-			<section className="rounded-xl border border-border bg-card p-4">
+			<section className="dash-card p-4">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
 						<input
@@ -118,6 +151,23 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 							</a>
 						</div>
 					)}
+				</div>
+				<div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+					<span>No PDF handy? Generate a synthetic GST invoice with your company on it:</span>
+					<Form method="post">
+						<input type="hidden" name="intent" value="test-invoice" />
+						<input type="hidden" name="role" value="seller" />
+						<button type="submit" disabled={busy} className="rounded-md border border-border px-2 py-1 font-medium text-foreground hover:bg-muted disabled:opacity-50">
+							We're the seller (sale)
+						</button>
+					</Form>
+					<Form method="post">
+						<input type="hidden" name="intent" value="test-invoice" />
+						<input type="hidden" name="role" value="buyer" />
+						<button type="submit" disabled={busy} className="rounded-md border border-border px-2 py-1 font-medium text-foreground hover:bg-muted disabled:opacity-50">
+							We're the buyer (purchase)
+						</button>
+					</Form>
 				</div>
 			</section>
 

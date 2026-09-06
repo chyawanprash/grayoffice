@@ -45,6 +45,7 @@ export const navigationGroups: NavigationGroup[] = [
     label: 'Finance',
     collapsible: true,
     items: [
+      { name: 'Recents', href: '/recents', icon: Icons.ClockIcon },
       { name: 'Invoices', href: '/invoices', icon: Icons.FileIcon },
       { name: 'Inventory', href: '/inventory', icon: Icons.StackIcon },
       { name: 'Banking', href: '/banking', icon: Building2Icon },

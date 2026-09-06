@@ -1,6 +1,5 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import { Link, useNavigation } from "react-router";
-import { GithubLogo, LinkedinLogo, XLogo } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
 import { ThemeToggle } from "~/components/theme";
 
@@ -180,11 +179,7 @@ const FOOTER_COLS: { title: string; links: { label: string; slug: string }[] }[]
 	},
 ];
 
-const SOCIALS = [
-	{ label: "LinkedIn", href: "https://www.linkedin.com", Icon: LinkedinLogo },
-	{ label: "X", href: "https://x.com", Icon: XLogo },
-	{ label: "GitHub", href: "https://github.com", Icon: GithubLogo },
-];
+const GITHUB_URL = "https://github.com/chyawanprash/grayoffice";
 
 const LEGAL = [
 	{ label: "Privacy Policy", slug: "privacy" },
@@ -205,18 +200,14 @@ export function SiteFooter() {
 									The agent that runs your close, reconciliation, and cash
 									reporting end to end, exceptions and human review included.
 								</p>
-								<div className="flex items-center gap-3">
-									{SOCIALS.map(({ label, href, Icon }) => (
-										<a
-											key={label}
-											href={href}
-											aria-label={label}
-											className="grid h-10 w-10 place-items-center rounded-xl bg-tint text-neutral-500 shadow-[inset_0_2px_0_0_rgba(255,255,255,0.6),0_1px_2px_rgba(0,0,0,0.05)] ring-1 ring-neutral-200 transition-colors hover:text-neutral-900"
-										>
-											<Icon size={16} weight="fill" />
-										</a>
-									))}
-								</div>
+								<a
+									href={GITHUB_URL}
+									target="_blank"
+									rel="noreferrer"
+									className="text-sm font-medium text-neutral-600 underline underline-offset-4 transition-colors hover:text-neutral-900"
+								>
+									chyawanprash/grayoffice on GitHub
+								</a>
 							</div>
 
 							<div className="lg:col-span-8">

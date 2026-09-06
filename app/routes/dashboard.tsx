@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/dashboard";
 import { requireOrg } from "~/lib/org.server";
+import { formatMoney } from "~/lib/money";
 import {
 	cashReport,
 	invoiceAnalytics,
@@ -13,8 +14,6 @@ export function meta() {
 	return [{ title: "Dashboard | Gray Office" }];
 }
 
-const inr = (n: number) =>
-	`₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const env = context.cloudflare.env;
@@ -29,13 +28,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		transactionsByJurisdiction(env, orgId).catch(() => null),
 	]);
 
-	return { orgName: org.name, period, cash, recent, close, analytics, jurisdiction };
+	return { orgName: org.name, currency: org.currency, period, cash, recent, close, analytics, jurisdiction };
 }
 
-const card = "rounded-xl bg-card p-4 text-card-foreground";
+const card = "dash-card p-4 text-card-foreground";
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
-	const { orgName, period, cash, recent, close, analytics, jurisdiction } = loaderData;
+	const { orgName, currency, period, cash, recent, close, analytics, jurisdiction } = loaderData;
+	const inr = (n: number) => formatMoney(n, currency);
 	const openCloseItems = close?.items.filter((i) => i.count > 0) ?? [];
 	const reconItem = close?.items.find((i) => i.step === "Reconcile bank transactions");
 
@@ -77,10 +77,25 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 						))}
 					</div>
 					{analytics && (
-						<div className="mt-4 space-y-1.5">
-							<GstBar label="CGST" value={analytics.gst.cgst} max={maxGst(analytics.gst)} />
-							<GstBar label="SGST" value={analytics.gst.sgst} max={maxGst(analytics.gst)} />
-							<GstBar label="IGST" value={analytics.gst.igst} max={maxGst(analytics.gst)} />
+						<div className="mt-4 space-y-2 text-sm">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">GST on sales (output — owed to govt)</span>
+								<span className="tabular-nums text-foreground">{inr(analytics.gst.output.total)}</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">GST on purchases (input credit)</span>
+								<span className="tabular-nums text-[var(--dashboard-completed)]">−{inr(analytics.gst.input.total)}</span>
+							</div>
+							<div className="flex items-center justify-between border-t border-border pt-2 font-medium">
+								<span className="text-foreground">Net GST payable</span>
+								<span className={`tabular-nums ${analytics.gst.net_payable < 0 ? "text-[var(--dashboard-completed)]" : "text-foreground"}`}>
+									{inr(analytics.gst.net_payable)}
+								</span>
+							</div>
+							<p className="pt-1 text-[11px] text-muted-foreground">
+								Sales CGST/SGST/IGST {inr(analytics.gst.output.cgst)} / {inr(analytics.gst.output.sgst)} / {inr(analytics.gst.output.igst)} ·
+								Purchases {inr(analytics.gst.input.cgst)} / {inr(analytics.gst.input.sgst)} / {inr(analytics.gst.input.igst)}
+							</p>
 						</div>
 					)}
 				</section>
@@ -230,22 +245,6 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 					</div>
 				</section>
 			)}
-		</div>
-	);
-}
-
-function maxGst(g: { cgst: number; sgst: number; igst: number }) {
-	return Math.max(1, g.cgst, g.sgst, g.igst);
-}
-
-function GstBar({ label, value, max }: { label: string; value: number; max: number }) {
-	return (
-		<div className="flex items-center gap-2 text-xs">
-			<span className="w-10 shrink-0 text-muted-foreground">{label}</span>
-			<div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-				<div className="h-full rounded-full bg-brand" style={{ width: `${(value / max) * 100}%` }} />
-			</div>
-			<span className="w-20 shrink-0 text-right tabular-nums text-foreground">{inr(value)}</span>
 		</div>
 	);
 }

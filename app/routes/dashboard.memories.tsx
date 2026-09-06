@@ -103,7 +103,7 @@ export default function Memories({ loaderData }: Route.ComponentProps) {
 					and their people, organisations and accounts will appear as a graph.
 				</p>
 			) : (
-				<div className="rounded-xl border border-border bg-card p-2">
+				<div className="dash-card p-2">
 					<svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Memory graph">
 						{edges.map((e, i) => {
 							const a = pos[idx.get(e.source.toLowerCase())!];

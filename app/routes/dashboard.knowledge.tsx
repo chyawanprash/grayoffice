@@ -154,7 +154,7 @@ export default function KnowledgeBase({ loaderData, actionData }: Route.Componen
 				</div>
 			)}
 
-			<section className="mt-4 rounded-xl border border-border bg-card p-4">
+			<section className="mt-4 dash-card p-4">
 				<h2 className="mb-3 text-sm font-medium text-foreground">
 					Documents ({docs.length})
 				</h2>

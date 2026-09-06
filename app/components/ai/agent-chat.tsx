@@ -8,6 +8,7 @@ import { ThinkingState } from "./thinking-state";
 import { ToolChips, type ToolStepData } from "./tool-chips";
 import { ApprovalCard } from "./approval-card";
 import { MessageActions, FollowUps } from "./message-extras";
+import { Markdown } from "./markdown";
 import { Ai02Composer, type ModelOption } from "./ai02-composer";
 import { RichBlock, displayBlockOf } from "./blocks";
 
@@ -148,11 +149,7 @@ export function AgentChat({
 									if (part.type === "reasoning" && part.text)
 										return <ThinkingState key={i} text={part.text} working={busy && m === lastAssistant} />;
 									if (part.type === "text" && part.text)
-										return (
-											<p key={i} className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
-												{part.text}
-											</p>
-										);
+										return <Markdown key={i} text={part.text} />;
 									return null;
 								})}
 

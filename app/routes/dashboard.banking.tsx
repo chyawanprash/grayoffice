@@ -12,6 +12,7 @@ import {
 	listBranches,
 	type BankIntent,
 } from "~/lib/bank.server";
+import { formatMoney } from "~/lib/money";
 
 export function meta() {
 	return [{ title: "Banking | Gray Office" }];
@@ -19,7 +20,8 @@ export function meta() {
 
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const env = context.cloudflare.env;
-	const { orgId } = await requireOrg(request, env);
+	const { orgId, org } = await requireOrg(request, env);
+	const currency = org.currency;
 	const row = await getOrgBank(env.DB, orgId);
 
 	if (!row) {
@@ -30,7 +32,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		} catch (err) {
 			bankError = err instanceof Error ? err.message : String(err);
 		}
-		return { connected: false as const, branches, bankError };
+		return { connected: false as const, branches, bankError, currency };
 	}
 
 	let summary = null;
@@ -40,7 +42,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	} catch (err) {
 		bankError = err instanceof Error ? err.message : String(err);
 	}
-	return { connected: true as const, branchCode: row.branch_code, summary, bankError };
+	return { connected: true as const, branchCode: row.branch_code, summary, bankError, currency };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -113,12 +115,12 @@ export async function action({ request, context }: Route.ActionArgs) {
 	}
 }
 
-const card = "rounded-xl border border-border bg-card p-4";
+const card = "dash-card p-4";
 const field =
 	"h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring";
-const inr = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
-
 export default function Banking({ loaderData, actionData }: Route.ComponentProps) {
+	const cur = loaderData.currency;
+	const inr = (n: number) => formatMoney(n, cur, 2);
 	const nav = useNavigation();
 	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const err = actionData && "error" in actionData ? actionData.error : null;
@@ -159,7 +161,7 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 							</select>
 						</label>
 						<label className="text-sm text-muted-foreground">
-							Opening balance (₹)
+							Opening balance
 							<input name="opening_balance" type="number" min={0} defaultValue={100000} className={field} />
 						</label>
 						<Button type="submit" size="sm" disabled={busy}>
@@ -195,11 +197,11 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 
 					<div className="grid gap-4 md:grid-cols-2">
 						<ActionCard title="Credit" intent="credit" busy={busy}>
-							<input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount ₹" required className={field} />
+							<input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required className={field} />
 							<input name="description" placeholder="Description" className={field} />
 						</ActionCard>
 						<ActionCard title="Debit" intent="debit" busy={busy}>
-							<input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount ₹" required className={field} />
+							<input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required className={field} />
 							<input name="description" placeholder="Description" className={field} />
 						</ActionCard>
 						<ActionCard title="Transfer" intent="transfer" busy={busy}>
@@ -209,7 +211,7 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 								<option value="upi">UPI</option>
 								<option value="wire">Wire</option>
 							</select>
-							<input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount ₹" required className={field} />
+							<input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required className={field} />
 							<input name="to_account" placeholder="To account (APNA… or IBAN)" className={field} />
 							<input name="upi_id" placeholder="UPI id (for UPI)" className={field} />
 							<input name="beneficiary_name" placeholder="Beneficiary name (external)" className={field} />
@@ -219,7 +221,7 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 						</ActionCard>
 						<ActionCard title="Subscribe (recurring charge)" intent="subscribe" busy={busy}>
 							<input name="company_name" placeholder="Company" required className={field} />
-							<input name="charge_amount" type="number" step="0.01" min="0.01" placeholder="Charge ₹ / hour" required className={field} />
+							<input name="charge_amount" type="number" step="0.01" min="0.01" placeholder="Charge / hour" required className={field} />
 						</ActionCard>
 					</div>
 

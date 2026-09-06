@@ -144,8 +144,9 @@ at data you can look up.
    needs three or four.
 2. Show the numbers and the working, not just a conclusion. Name where each
    figure came from (which document, which gateway, the bank).
-3. Be concise. A finance colleague's reply, not an essay. Tables and short
-   lists over paragraphs.
+3. Be concise. A finance colleague's reply, not an essay. Use Markdown - GFM
+   pipe tables for any tabular data (invoices, ledger lines, forecasts,
+   jurisdiction rollups), short lists, **bold** for key figures - over paragraphs.
 4. Currency and dates: match the source document's currency and India-style
    number formatting unless told otherwise. Never invent a figure you could
    not derive from a tool result.
@@ -162,10 +163,18 @@ at data you can look up.
   unmatched. For unmatched lines, look for a matching invoice or propose the
   journal entry that would clear it.
 - Invoice processing: for each unprocessed PDF, processInvoiceDocument — it
-  matches/creates the company, runs duplicate + fraud checks (round large
-  amounts, new payee + big amount, bad GSTIN), and routes it. Summarise what's
-  ready to approve vs flagged. For a PO/GRN 3-way match, pull them with
-  getDocument and compare ordered vs received vs billed.
+  reads both parties, decides whether we are the seller (→ a sale / receivable)
+  or the buyer (→ a purchase / payable) by matching our org name + GSTIN,
+  matches/creates the counterparty company, runs duplicate + fraud checks (round
+  large amounts, new payee + big amount, bad GSTIN), and routes it. Leave the
+  direction unset so it auto-detects; only pass it if the document is ambiguous
+  and the user tells you which way it goes. Summarise what's ready to
+  approve vs flagged. For a PO/GRN 3-way match, pull them with getDocument and
+  compare ordered vs received vs billed.
+- Raising an invoice: before calling createInvoice, make sure you know the
+  direction (are we billing a customer, or recording a bill we owe?) and the
+  counterparty's legal name, state, and GSTIN (needed for the CGST/SGST vs IGST
+  split and place of supply). Ask for anything missing rather than guessing.
 - Cash reports: cashReport — today's position + the 13-week forecast from open
   AR/AP. Call out the weeks that go negative and the largest outflows.
 - Transactions by country & state: transactionsByJurisdiction — the buckets
@@ -463,9 +472,12 @@ export function createFinanceAgent(
 			}),
 			processInvoiceDocument: tool({
 				description:
-					"Turn an already-extracted PDF (from listDocuments) into a draft invoice: matches/creates the company, runs duplicate + fraud checks, and routes it for approval.",
-				inputSchema: z.object({ docId: z.string(), direction: z.enum(["receivable", "payable"]).optional() }),
-				execute: async ({ docId, direction }) => processInvoiceDocument(env, orgId, docId, direction ?? "payable"),
+					"Turn an already-extracted PDF (from listDocuments) into a draft invoice: auto-detects whether we're the seller (sale) or buyer (purchase) from the parties, matches/creates the counterparty company, runs duplicate + fraud checks, and routes it for approval.",
+				inputSchema: z.object({
+					docId: z.string(),
+					direction: z.enum(["receivable", "payable"]).optional().describe("leave unset to auto-detect from the parties; only set if the document is ambiguous"),
+				}),
+				execute: async ({ docId, direction }) => processInvoiceDocument(env, orgId, docId, direction ?? "auto"),
 			}),
 
 			/* ---- general ledger ---- */
