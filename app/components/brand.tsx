@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { GithubLogo, LinkedinLogo, XLogo } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
@@ -13,12 +14,48 @@ export function Logo({ className = "" }: { className?: string }) {
 }
 
 const NAV = [
-	{ label: "Product", href: "/#product" },
-	{ label: "Workflows", href: "/#workflows" },
-	{ label: "How it works", href: "/#how" },
+	{ label: "Product", href: "/#product", id: "product" },
+	{ label: "Workflows", href: "/#workflows", id: "workflows" },
+	{ label: "How it works", href: "/#how", id: "how" },
 ];
 
+const SECTION_IDS = NAV.map((n) => n.id);
+
+function useActiveSection(ids: string[]) {
+	const [active, setActive] = useState<string | null>(null);
+
+	useEffect(() => {
+		const sections = ids
+			.map((id) => document.getElementById(id))
+			.filter((el): el is HTMLElement => el !== null);
+		if (sections.length === 0) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const visible = entries
+					.filter((e) => e.isIntersecting)
+					.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+				const next = visible[0]?.target.id;
+				if (next) {
+					setActive(next);
+					const hash = `#${next}`;
+					if (window.location.hash !== hash) {
+						window.history.replaceState(null, "", hash);
+					}
+				}
+			},
+			{ rootMargin: "-45% 0px -50% 0px", threshold: [0, 0.25, 0.5, 1] },
+		);
+
+		sections.forEach((el) => observer.observe(el));
+		return () => observer.disconnect();
+	}, [ids]);
+
+	return active;
+}
+
 export function SiteNav() {
+	const active = useActiveSection(SECTION_IDS);
 	return (
 		<header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-canvas/80 backdrop-blur">
 			<div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-10 px-4 md:px-6">
@@ -30,7 +67,10 @@ export function SiteNav() {
 						<a
 							key={n.label}
 							href={n.href}
-							className="transition-colors hover:text-neutral-900"
+							aria-current={active === n.id ? "true" : undefined}
+							className={`transition-colors hover:text-neutral-900 ${
+								active === n.id ? "text-neutral-900" : ""
+							}`}
 						>
 							{n.label}
 						</a>
