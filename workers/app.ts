@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createRequestHandler } from "react-router";
 import { apiRoutes } from "./api";
 import { botRoutes } from "./bots";
+import { botCompatRoutes } from "./bot-compat";
 import { paymentRoutes } from "./payments";
 import { pdfToJson } from "./bot-router";
 import { queueConsumer } from "./queue";
@@ -9,7 +10,9 @@ import { kbQueueConsumer, type KbJob } from "./kb-queue";
 
 const app = new Hono<{ Bindings: Env & { TARGET_DOMAIN?: string } }>();
 
-// API routes
+// API routes. Compat first: /api/bots/ingest + /api/bots/link/* for the
+// standalone bot repos, then the dashboard-connect webhooks (/:platform/:orgId).
+app.route("/api/bots", botCompatRoutes);
 app.route("/api/bots", botRoutes);
 app.route("/api/payments", paymentRoutes);
 app.route("/api", apiRoutes);
