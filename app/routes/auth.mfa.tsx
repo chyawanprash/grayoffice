@@ -53,7 +53,15 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 	if (intent === "email-send") {
 		const code = await createEmailOtp(DB, user.id, "mfa");
-		await sendOtpEmail(env, user.email, code, "mfa");
+		try {
+			await sendOtpEmail(env, user.email, code, "mfa");
+		} catch (err) {
+			console.error("[mfa] email send failed", err);
+			return {
+				error:
+					"We couldn’t send the email right now. Use your authenticator app, or try again.",
+			};
+		}
 		return { sent: true };
 	}
 

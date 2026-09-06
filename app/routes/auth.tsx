@@ -5,12 +5,15 @@ import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/auth";
 import {
 	createPendingMfaSession,
+	createPendingVerifySession,
 	createUser,
 	createUserSession,
 	findUserByEmail,
 	getUserId,
 	verifyPassword,
 } from "~/lib/auth.server";
+import { createEmailOtp } from "~/lib/mfa.server";
+import { sendOtpEmail } from "~/lib/email.server";
 import { googleConfigured } from "~/lib/google.server";
 
 export function meta() {
@@ -24,7 +27,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
-	const { DB, SESSION_SECRET } = context.cloudflare.env;
+	const env = context.cloudflare.env;
+	const { DB, SESSION_SECRET } = env;
 	const form = await request.formData();
 	const email = String(form.get("email") ?? "")
 		.trim()
@@ -36,19 +40,31 @@ export async function action({ request, context }: Route.ActionArgs) {
 	if (password.length < 8)
 		return { error: "Password must be at least 8 characters." };
 
+	// Send an email verification code and park the account in a pending state.
+	async function startVerification(userId: string) {
+		const code = await createEmailOtp(DB, userId, "verify");
+		try {
+			await sendOtpEmail(env, email, code, "verify");
+		} catch (err) {
+			console.error("[auth] verification email failed", err);
+		}
+		return createPendingVerifySession(SESSION_SECRET, userId);
+	}
+
 	const existing = await findUserByEmail(DB, email);
 	if (existing) {
 		if (!existing.password_hash)
 			return { error: "This account uses Google sign-in. Continue with Google." };
 		if (!(await verifyPassword(password, existing.password_hash)))
 			return { error: "Wrong email or password." };
+		if (!existing.email_verified) return startVerification(existing.id);
 		if (existing.totp_enabled)
 			return createPendingMfaSession(SESSION_SECRET, existing.id, "/dashboard");
 		return createUserSession(SESSION_SECRET, existing.id, "/dashboard");
 	}
 
 	const user = await createUser(DB, email, password);
-	return createUserSession(SESSION_SECRET, user.id, "/dashboard");
+	return startVerification(user.id);
 }
 
 export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
@@ -133,8 +149,8 @@ export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
 						Sign in to Gray Office
 					</h1>
 					<p className="mt-2 text-sm text-neutral-500">
-						Enter your email and password. New here? An account is created on
-						your first sign in.
+						Enter your email and password. New here? We&rsquo;ll email you a code
+						to confirm your address.
 					</p>
 
 					{loaderData?.google && (

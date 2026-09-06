@@ -46,6 +46,11 @@ export async function sendOtpEmail(
 	code: string,
 	purpose: OtpPurpose,
 ): Promise<void> {
+	// Local dev: always echo the code so flows work without deliverable email.
+	if (!import.meta.env.PROD) {
+		console.log(`[otp:dev] ${purpose} code for ${to} → ${code}`);
+	}
+
 	const subjects: Record<OtpPurpose, string> = {
 		mfa: `${code} is your Gray Office sign-in code`,
 		verify: `${code} — confirm your email`,

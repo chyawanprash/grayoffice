@@ -8,6 +8,7 @@ import {
 export default [
 	index("routes/home.tsx"),
 	route("auth", "routes/auth.tsx"),
+	route("auth/verify", "routes/auth.verify.tsx"),
 	route("auth/mfa", "routes/auth.mfa.tsx"),
 	route("auth/google", "routes/auth.google.tsx"),
 	route("auth/google/callback", "routes/auth.google.callback.tsx"),

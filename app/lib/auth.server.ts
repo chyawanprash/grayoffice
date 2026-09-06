@@ -134,6 +134,47 @@ export async function completeMfaSession(
 	});
 }
 
+/* -------------------------------------------------- pending email verification */
+
+/**
+ * The account exists but its email address is not confirmed yet. Park the id
+ * under its own session key (NOT signed in) and send them to /auth/verify.
+ */
+export async function createPendingVerifySession(secret: string, userId: string) {
+	const { getSession, commitSession } = storage(secret);
+	const session = await getSession();
+	session.set("pendingVerifyUserId", userId);
+	return redirect("/auth/verify", {
+		headers: { "Set-Cookie": await commitSession(session) },
+	});
+}
+
+export async function getPendingVerifyUserId(
+	request: Request,
+	secret: string,
+): Promise<string | null> {
+	const { getSession } = storage(secret);
+	const session = await getSession(request.headers.get("Cookie"));
+	const userId = session.get("pendingVerifyUserId");
+	return typeof userId === "string" ? userId : null;
+}
+
+/** Promote a verified pending session into a real signed-in session. */
+export async function completeVerifySession(
+	request: Request,
+	secret: string,
+	userId: string,
+	redirectTo: string,
+) {
+	const { getSession, commitSession } = storage(secret);
+	const session = await getSession(request.headers.get("Cookie"));
+	session.unset("pendingVerifyUserId");
+	session.set("userId", userId);
+	return redirect(redirectTo, {
+		headers: { "Set-Cookie": await commitSession(session) },
+	});
+}
+
 export async function getUserId(
 	request: Request,
 	secret: string,
@@ -267,6 +308,16 @@ export async function setTotpSecret(
 	await db
 		.prepare("UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?")
 		.bind(secret, userId)
+		.run();
+}
+
+export async function markEmailVerified(
+	db: D1Database,
+	userId: string,
+): Promise<void> {
+	await db
+		.prepare("UPDATE users SET email_verified = 1 WHERE id = ?")
+		.bind(userId)
 		.run();
 }
 

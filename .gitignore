@@ -7,3 +7,5 @@ build/
 public/_old-*
 worker-configuration.d.ts
 .dev.vars
+.env
+.env.local
