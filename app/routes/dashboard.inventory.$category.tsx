@@ -6,6 +6,7 @@ import type { Route } from "./+types/dashboard.inventory.$category";
 import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
 import { addInventoryItem, deleteInventoryItem, inventoryGrid } from "~/lib/inventory.server";
+import { formatMoney } from "~/lib/money";
 
 const CATEGORIES = ["software", "hardware", "consumables", "services", "other"];
 const MONTHS = [
@@ -13,14 +14,13 @@ const MONTHS = [
 	"July", "August", "September", "October", "November", "December",
 ];
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export function meta({ params }: Route.MetaArgs) {
 	return [{ title: `${params.category} inventory | Gray Office` }];
 }
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
-	const { orgId } = await requireOrg(request, context.cloudflare.env);
+	const { orgId, org } = await requireOrg(request, context.cloudflare.env);
 	const category = String(params.category);
 	if (!CATEGORIES.includes(category)) throw redirect("/dashboard/inventory");
 	const now = new Date();
@@ -31,7 +31,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 	const grid = await inventoryGrid(context.cloudflare.env.DB, orgId, year, category);
 	const group = grid.categories[0] ?? { category, items: [], months: new Array(12).fill(0), total: 0 };
-	return { category, year, month, thisYear: now.getFullYear(), group };
+	return { category, year, month, currency: org.currency, thisYear: now.getFullYear(), group };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -67,15 +67,16 @@ const inputCls =
 const selectCls =
 	"h-9 rounded-lg border border-border bg-card px-2.5 text-sm font-medium text-foreground outline-none focus:border-brand";
 
-function billing(it: { kind: string; cadence: string; amount_cents: number; quantity: number }) {
-	const unit = inr(it.amount_cents / 100);
+function billing(it: { kind: string; cadence: string; amount_cents: number; quantity: number }, currency: string) {
+	const unit = formatMoney(it.amount_cents / 100, currency);
 	const qty = it.quantity > 1 ? ` ×${it.quantity}` : "";
 	if (it.kind === "purchase") return `One-off${qty} · ${unit}`;
 	return `${it.cadence === "yearly" ? "Yearly" : "Monthly"}${qty} · ${unit}`;
 }
 
 export default function InventoryCategory({ loaderData, actionData }: Route.ComponentProps) {
-	const { category, year, month, thisYear, group } = loaderData;
+	const { category, year, month, currency, thisYear, group } = loaderData;
+	const inr = (n: number) => formatMoney(n, currency);
 	const nav = useNavigation();
 	const navigate = useNavigate();
 	const busy = nav.formData != null;
@@ -172,7 +173,7 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 										{it.name}
 									</td>
 									<td className="text-muted-foreground">{it.vendor || "—"}</td>
-									<td className="text-muted-foreground">{billing(it)}</td>
+									<td className="text-muted-foreground">{billing(it, currency)}</td>
 									<td className="text-right font-medium tabular-nums text-foreground">{inr(it.months[month])}</td>
 									<td className="text-right tabular-nums text-muted-foreground">{inr(it.total)}</td>
 									<td className="text-right">

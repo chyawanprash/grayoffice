@@ -9,7 +9,7 @@ import { sendInviteEmail } from "./email.server";
 
 export type Role = "owner" | "admin" | "member";
 
-export type Org = { id: string; name: string; slug: string; created_by: string; agent_model: string | null; home_state: string | null; home_country: string | null };
+export type Org = { id: string; name: string; slug: string; created_by: string; agent_model: string | null; home_state: string | null; home_country: string | null; currency: string };
 export type Member = {
 	user_id: string;
 	role: Role;
@@ -55,7 +55,7 @@ export async function createOrg(
 			.prepare("INSERT INTO memberships (org_id, user_id, role) VALUES (?, ?, 'owner')")
 			.bind(id, userId),
 	]);
-	return { id, name: name.trim().slice(0, 80), slug, created_by: userId, agent_model: null, home_state: null, home_country: 'IN' };
+	return { id, name: name.trim().slice(0, 80), slug, created_by: userId, agent_model: null, home_state: null, home_country: 'IN', currency: 'INR' };
 }
 
 export async function listOrgsForUser(
@@ -64,7 +64,7 @@ export async function listOrgsForUser(
 ): Promise<(Org & { role: Role })[]> {
 	const { results } = await db
 		.prepare(
-			`SELECT o.id, o.name, o.slug, o.created_by, o.agent_model, o.home_state, o.home_country, m.role
+			`SELECT o.id, o.name, o.slug, o.created_by, o.agent_model, o.home_state, o.home_country, o.currency, m.role
 			 FROM memberships m JOIN organizations o ON o.id = m.org_id
 			 WHERE m.user_id = ? ORDER BY o.created_at`,
 		)
@@ -232,6 +232,6 @@ export async function requireOrg(request: Request, env: Env): Promise<OrgContext
 	return {
 		orgId: active.id,
 		role: active.role,
-		org: { id: active.id, name: active.name, slug: active.slug, created_by: active.created_by, agent_model: active.agent_model, home_state: active.home_state, home_country: active.home_country },
+		org: { id: active.id, name: active.name, slug: active.slug, created_by: active.created_by, agent_model: active.agent_model, home_state: active.home_state, home_country: active.home_country, currency: active.currency ?? "INR" },
 	};
 }

@@ -13,6 +13,7 @@ import {
 } from "~/lib/org.server";
 import { AGENT_MODELS, availableAgentModels } from "~/lib/agent.server";
 import { getOrgProfile, setOrgProfile } from "~/lib/ledger.server";
+import { CURRENCIES } from "~/lib/money";
 
 export function meta() {
 	return [{ title: "Organization | Gray Office" }];
@@ -57,11 +58,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 	if (intent === "profile") {
 		if (role === "member") return { error: "Only an owner or admin can set this." };
+		const currency = String(form.get("currency") ?? "").trim().toUpperCase();
 		await setOrgProfile(env.DB, orgId, {
 			address: String(form.get("address") ?? "").trim(),
 			tax_id: String(form.get("tax_id") ?? "").trim(),
 			home_state: String(form.get("home_state") ?? "").trim(),
 			home_country: String(form.get("home_country") ?? "").trim() || "IN",
+			currency: (CURRENCIES as readonly string[]).includes(currency) ? currency : "INR",
 		});
 		return { ok: "profile" as const };
 	}
@@ -191,6 +194,22 @@ export default function Organization({ loaderData, actionData }: Route.Component
 								/>
 							</label>
 						</div>
+						<label className="text-sm text-muted-foreground">
+							Display currency
+							<select
+								name="currency"
+								defaultValue={profile.currency ?? "INR"}
+								disabled={role === "member"}
+								className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none focus:border-ring disabled:opacity-60"
+							>
+								{CURRENCIES.map((c) => (
+									<option key={c} value={c}>{c}</option>
+								))}
+							</select>
+							<span className="mt-1 block text-xs text-muted-foreground/80">
+								How amounts are shown across the dashboard. Stored records keep their values.
+							</span>
+						</label>
 						{role !== "member" && (
 							<div className="flex items-center gap-2">
 								<Button type="submit" size="sm" variant="outline" disabled={busy}>Save</Button>

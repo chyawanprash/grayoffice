@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { Route } from "./+types/dashboard.inventory";
 import { requireOrg } from "~/lib/org.server";
 import { inventoryGrid } from "~/lib/inventory.server";
+import { formatMoney } from "~/lib/money";
 
 export function meta() {
 	return [{ title: "Inventory | Gray Office" }];
@@ -9,16 +10,16 @@ export function meta() {
 
 const CATEGORIES = ["software", "hardware", "consumables", "services", "other"] as const;
 const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-const inr = (n: number) => (n ? `₹${Math.round(n).toLocaleString("en-IN")}` : "—");
 
 export async function loader({ request, context }: Route.LoaderArgs) {
-	const { orgId } = await requireOrg(request, context.cloudflare.env);
+	const { orgId, org } = await requireOrg(request, context.cloudflare.env);
 	const url = new URL(request.url);
 	const year = Number(url.searchParams.get("year")) || new Date().getFullYear();
 	const grid = await inventoryGrid(context.cloudflare.env.DB, orgId, year);
 	const byCat = Object.fromEntries(grid.categories.map((g) => [g.category, g]));
 	return {
 		year,
+		currency: org.currency,
 		thisYear: new Date().getFullYear(),
 		grandTotal: grid.grand_total,
 		months: grid.months,
@@ -32,7 +33,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export default function Inventory({ loaderData }: Route.ComponentProps) {
-	const { year, thisYear, grandTotal, months, cards } = loaderData;
+	const { year, currency, thisYear, grandTotal, months, cards } = loaderData;
+	const inr = (n: number) => (n ? formatMoney(n, currency) : "—");
 	const years = Array.from({ length: 5 }, (_, i) => thisYear - 3 + i);
 	const peak = Math.max(1, ...months);
 

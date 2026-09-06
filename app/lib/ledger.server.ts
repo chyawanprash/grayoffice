@@ -286,7 +286,7 @@ export async function createInvoice(env: Env, orgId: string, input: CreateInvoic
 export async function listInvoices(
 	db: D1Database,
 	orgId: string,
-	opts: { direction?: string; status?: string; limit?: number } = {},
+	opts: { direction?: string; status?: string; source?: string; limit?: number } = {},
 ) {
 	const where = ["i.org_id = ?"];
 	const bind: unknown[] = [orgId];
@@ -298,10 +298,14 @@ export async function listInvoices(
 		where.push("i.status = ?");
 		bind.push(opts.status);
 	}
+	if (opts.source) {
+		where.push("i.source = ?");
+		bind.push(opts.source);
+	}
 	const { results } = await db
 		.prepare(
 			`SELECT i.id, i.number, i.direction, i.status, i.issue_date, i.due_date,
-			        i.total_cents, i.place_of_supply, c.name AS company
+			        i.total_cents, i.tax_cents, i.place_of_supply, i.source, i.currency, c.name AS company
 			 FROM invoices i JOIN companies c ON c.id = i.company_id
 			 WHERE ${where.join(" AND ")} ORDER BY i.issue_date DESC LIMIT ?`,
 		)
@@ -314,10 +318,13 @@ export async function listInvoices(
 			issue_date: string;
 			due_date: string | null;
 			total_cents: number;
+			tax_cents: number;
 			place_of_supply: string | null;
+			source: string;
+			currency: string;
 			company: string;
 		}>();
-	return (results ?? []).map((x) => ({ ...x, total: inr(x.total_cents) }));
+	return (results ?? []).map((x) => ({ ...x, total: inr(x.total_cents), tax: inr(x.tax_cents) }));
 }
 
 export async function getInvoice(db: D1Database, orgId: string, id: string) {
@@ -707,20 +714,21 @@ export type OrgProfile = {
 	tax_id: string | null;
 	home_state: string | null;
 	home_country: string | null;
+	currency: string;
 };
 
 export async function getOrgProfile(db: D1Database, orgId: string): Promise<OrgProfile> {
 	const row = await db
-		.prepare("SELECT address, tax_id, home_state, home_country FROM organizations WHERE id = ?")
+		.prepare("SELECT address, tax_id, home_state, home_country, currency FROM organizations WHERE id = ?")
 		.bind(orgId)
 		.first<OrgProfile>();
-	return row ?? { address: null, tax_id: null, home_state: null, home_country: "IN" };
+	return row ?? { address: null, tax_id: null, home_state: null, home_country: "IN", currency: "INR" };
 }
 
 export async function setOrgProfile(
 	db: D1Database,
 	orgId: string,
-	p: { address?: string | null; tax_id?: string | null; home_state?: string | null; home_country?: string | null },
+	p: { address?: string | null; tax_id?: string | null; home_state?: string | null; home_country?: string | null; currency?: string | null },
 ) {
 	await db
 		.prepare(
@@ -728,7 +736,8 @@ export async function setOrgProfile(
 			   address      = COALESCE(?, address),
 			   tax_id       = COALESCE(?, tax_id),
 			   home_state   = COALESCE(?, home_state),
-			   home_country = COALESCE(?, home_country)
+			   home_country = COALESCE(?, home_country),
+			   currency     = COALESCE(?, currency)
 			 WHERE id = ?`,
 		)
 		.bind(
@@ -736,6 +745,7 @@ export async function setOrgProfile(
 			p.tax_id ?? null,
 			p.home_state ?? null,
 			p.home_country ?? null,
+			p.currency ?? null,
 			orgId,
 		)
 		.run();
