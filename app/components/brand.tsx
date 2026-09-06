@@ -131,6 +131,14 @@ export function SiteNav() {
 					))}
 				</nav>
 				<div className="ml-auto flex items-center gap-2.5">
+					<a
+						href={DISCORD_URL}
+						target="_blank"
+						rel="noreferrer"
+						className="hidden text-[15px] font-medium text-neutral-600 transition-colors hover:text-neutral-900 sm:inline-flex"
+					>
+						Discord
+					</a>
 					<ThemeToggle />
 					<Button
 						render={<Link to="/sign-in" />}
@@ -180,6 +188,7 @@ const FOOTER_COLS: { title: string; links: { label: string; slug: string }[] }[]
 ];
 
 const GITHUB_URL = "https://github.com/chyawanprash/grayoffice";
+const DISCORD_URL = "https://discord.gg/PrjRVdgWnZ";
 
 const LEGAL = [
 	{ label: "Privacy Policy", slug: "privacy" },
@@ -200,14 +209,24 @@ export function SiteFooter() {
 									The agent that runs your close, reconciliation, and cash
 									reporting end to end, exceptions and human review included.
 								</p>
-								<a
-									href={GITHUB_URL}
-									target="_blank"
-									rel="noreferrer"
-									className="text-sm font-medium text-neutral-600 underline underline-offset-4 transition-colors hover:text-neutral-900"
-								>
-									chyawanprash/grayoffice on GitHub
-								</a>
+								<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-neutral-600">
+									<a
+										href={GITHUB_URL}
+										target="_blank"
+										rel="noreferrer"
+										className="underline underline-offset-4 transition-colors hover:text-neutral-900"
+									>
+										chyawanprash/grayoffice on GitHub
+									</a>
+									<a
+										href={DISCORD_URL}
+										target="_blank"
+										rel="noreferrer"
+										className="underline underline-offset-4 transition-colors hover:text-neutral-900"
+									>
+										Join the Discord
+									</a>
+								</div>
 							</div>
 
 							<div className="lg:col-span-8">

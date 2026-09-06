@@ -8,8 +8,9 @@
  */
 import { getOrgBank, getBankSummary } from "./bank.server";
 import { getExtract } from "./docs.server";
+import { queueInvoiceKb } from "./kb.server";
 
-type Env = { DB: D1Database };
+type Env = { DB: D1Database; KB_QUEUE?: Queue };
 
 const uid = () => crypto.randomUUID();
 const inr = (cents: number) => cents / 100;

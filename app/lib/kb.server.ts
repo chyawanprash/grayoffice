@@ -94,6 +94,60 @@ export async function ingestPdf(
 	}
 }
 
+/**
+ * Ingest a plain-text document (an invoice we raised, a note) into the KB the
+ * same way a PDF would be — chunk, embed, extract the entity graph. Creates a
+ * `kb_documents` row unless `docId` names an existing one.
+ */
+export async function ingestText(
+	env: Env,
+	orgId: string,
+	opts: { name: string; text: string; docId?: string; sourceRef?: string },
+): Promise<string> {
+	const docId = opts.docId ?? crypto.randomUUID();
+	const name = opts.name.slice(0, 200);
+	if (!opts.docId) {
+		await env.DB.prepare(
+			"INSERT OR IGNORE INTO kb_documents (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
+		)
+			.bind(docId, orgId, name, opts.text.length)
+			.run();
+	}
+	try {
+		const chunks = chunkText(opts.text).map((t, idx) => ({
+			id: `${docId}:${idx}`,
+			text: t,
+			metadata: { doc_id: docId, name },
+		}));
+		const n = await upsertChunks(env, ns(orgId), chunks);
+		await extractGraph(env, orgId, docId, name, opts.text).catch((e) =>
+			console.error(`kb graph extract failed for ${docId}: ${e}`),
+		);
+		await env.DB.prepare("UPDATE kb_documents SET status = 'ready', chunks = ?, error = NULL WHERE id = ?")
+			.bind(n || chunks.length, docId)
+			.run();
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		await env.DB.prepare("UPDATE kb_documents SET status = 'error', error = ? WHERE id = ?")
+			.bind(message.slice(0, 500), docId)
+			.run();
+		throw err;
+	}
+	return docId;
+}
+
+type QueueOnly = { KB_QUEUE: Queue };
+
+/** Fire-and-forget: send an invoice into the KB + memory-graph pipeline. */
+export async function queueInvoiceKb(env: Partial<QueueOnly>, orgId: string, invoiceId: string): Promise<void> {
+	if (!env.KB_QUEUE) return;
+	try {
+		await env.KB_QUEUE.send({ kind: "invoice", orgId, invoiceId });
+	} catch (e) {
+		console.error(`queueInvoiceKb failed: ${e}`);
+	}
+}
+
 /* ───────────────────────────────────────────────── memory graph */
 
 const GRAPH_SYSTEM = `You build a knowledge graph from a finance/accounting document.
