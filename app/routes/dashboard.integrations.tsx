@@ -1,17 +1,11 @@
 import { useState } from "react";
 import { Form, Link, useNavigation } from "react-router";
-import {
-	CheckCircle,
-	Circle,
-	Copy,
-	DiscordLogo,
-	SlackLogo,
-	TelegramLogo,
-	type Icon,
-} from "@phosphor-icons/react";
+import type { ComponentType, SVGProps } from "react";
+import { CheckCircle, Circle, Copy } from "@phosphor-icons/react";
 import type { Route } from "./+types/dashboard.integrations";
 import { requireUserId } from "~/lib/auth.server";
 import { Button } from "~/components/ui/button";
+import { DiscordIcon, SlackIcon, TelegramIcon } from "~/components/brand-icons";
 
 export function meta() {
 	return [{ title: "Integrations | Gray Office" }];
@@ -23,7 +17,7 @@ const SOURCES: Source[] = ["slack", "telegram", "discord"];
 type CatalogEntry = {
 	source: Source;
 	name: string;
-	icon: Icon;
+	icon: ComponentType<SVGProps<SVGSVGElement>>;
 	tint: string;
 	blurb: string;
 	repo: string;
@@ -36,7 +30,7 @@ const CATALOG: CatalogEntry[] = [
 	{
 		source: "slack",
 		name: "Slack",
-		icon: SlackLogo,
+		icon: SlackIcon,
 		tint: "bg-[#4A154B]/10 text-[#4A154B] dark:bg-[#4A154B]/30 dark:text-[#e0b0e4]",
 		blurb:
 			"Mentions and DMs (plus shared PDFs) are forwarded to the backend; replies post back in-thread.",
@@ -47,7 +41,7 @@ const CATALOG: CatalogEntry[] = [
 	{
 		source: "telegram",
 		name: "Telegram",
-		icon: TelegramLogo,
+		icon: TelegramIcon,
 		tint: "bg-[#229ED9]/10 text-[#229ED9] dark:bg-[#229ED9]/25 dark:text-[#7cc6e8]",
 		blurb:
 			"Every message and PDF document is forwarded; the bot answers with the finance assistant's reply.",
@@ -58,7 +52,7 @@ const CATALOG: CatalogEntry[] = [
 	{
 		source: "discord",
 		name: "Discord",
-		icon: DiscordLogo,
+		icon: DiscordIcon,
 		tint: "bg-[#5865F2]/10 text-[#5865F2] dark:bg-[#5865F2]/25 dark:text-[#a3aaf5]",
 		blurb:
 			"@mentions, DMs and the /ask command are forwarded; attachments are routed to PDF→JSON.",
@@ -205,7 +199,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 						>
 							<div className="mb-2 flex items-center justify-between">
 								<span className={`grid size-9 place-items-center rounded-lg ${c.tint}`}>
-									<Icon weight="fill" className="size-5" />
+									<Icon className="size-5" />
 								</span>
 								<span
 									className={`rounded-md px-2 py-0.5 text-xs font-medium ${
@@ -295,7 +289,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 										defaultChecked={i === 0}
 										className="sr-only"
 									/>
-									<Icon weight="fill" className="size-3.5" />
+									<Icon className="size-3.5" />
 									{c.name}
 								</label>
 							);
