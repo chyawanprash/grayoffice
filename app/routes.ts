@@ -20,6 +20,7 @@ export default [
 		route("dashboard", "routes/dashboard.tsx"),
 		route("dashboard/assistant", "routes/dashboard.assistant.tsx"),
 		route("dashboard/audit", "routes/dashboard.audit.tsx"),
+		route("dashboard/integrations", "routes/dashboard.integrations.tsx"),
 		route("dashboard/settings", "routes/dashboard.settings.tsx"),
 		route("dashboard/:section", "routes/dashboard.section.tsx"),
 	]),

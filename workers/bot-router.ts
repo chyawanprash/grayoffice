@@ -29,7 +29,7 @@ const ROUTES = ["pdf-to-json", "ask", "unhandled"] as const;
 type RouteName = (typeof ROUTES)[number];
 
 /** Model that answers free-text questions from the bots. */
-const CHAT_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+const CHAT_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 
 const CHAT_SYSTEM = `You are the Gray Office finance operations assistant, replying
 to a user over a chat bot (Slack / Telegram / Discord). Help with closing the
@@ -129,7 +129,7 @@ export async function pdfToJson(env: Env, file: InboundFile): Promise<unknown> {
 	])) as Array<{ data: string }>;
 	const markdown = md.map((d) => d.data).join("\n\n").slice(0, 12_000);
 
-	const r = (await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+	const r = (await env.AI.run(CHAT_MODEL, {
 		messages: [
 			{
 				role: "system",
