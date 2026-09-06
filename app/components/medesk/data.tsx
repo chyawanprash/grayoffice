@@ -54,6 +54,7 @@ export const navigationGroups: NavigationGroup[] = [
     collapsible: true,
     items: [
       { name: 'Knowledge base', href: '/knowledge', icon: BookOpenIcon },
+      { name: 'Memories', href: '/memories', icon: Icons.LinkIcon },
       { name: 'Documents', href: '/documents', icon: Icons.FileArrowUpIcon },
     ],
   },

@@ -29,6 +29,8 @@ export default [
 		route("dashboard/banking", "routes/dashboard.banking.tsx"),
 		route("dashboard/knowledge", "routes/dashboard.knowledge.tsx"),
 		route("dashboard/documents", "routes/dashboard.documents.tsx"),
+		route("dashboard/memories", "routes/dashboard.memories.tsx"),
+		route("dashboard/search", "routes/dashboard.search.tsx"),
 		route("dashboard/invoices", "routes/dashboard.invoices.tsx"),
 		route("dashboard/agent-model", "routes/dashboard.agent-model.tsx"),
 		route("dashboard/downloads", "routes/dashboard.downloads.tsx"),

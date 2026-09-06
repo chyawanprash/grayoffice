@@ -1,7 +1,6 @@
-import { useEffect } from "react";
-import { Form, useNavigation, useRevalidator } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Form, useNavigation, useRevalidator, useSubmit } from "react-router";
 import type { Route } from "./+types/dashboard.knowledge";
-import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
 import { deleteDoc, listDocs, queueKbIngest } from "~/lib/kb.server";
 import { pineconeConfigured } from "~/lib/pinecone.server";
@@ -56,6 +55,54 @@ const badge: Record<string, string> = {
 	error: "bg-[color-mix(in_oklch,var(--destructive)_16%,transparent)] text-destructive",
 };
 
+function DropZone({ busy }: { busy: boolean }) {
+	const formRef = useRef<HTMLFormElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const submit = useSubmit();
+	const [over, setOver] = useState(false);
+	const [names, setNames] = useState<string[]>([]);
+
+	function send(files: FileList | null) {
+		if (!files || files.length === 0) return;
+		const dt = new DataTransfer();
+		for (const f of Array.from(files)) dt.items.add(f);
+		if (inputRef.current) inputRef.current.files = dt.files;
+		setNames(Array.from(files).map((f) => f.name));
+		if (formRef.current) submit(formRef.current, { method: "post", encType: "multipart/form-data" });
+	}
+
+	return (
+		<Form ref={formRef} method="post" encType="multipart/form-data">
+			<button
+				type="button"
+				onClick={() => inputRef.current?.click()}
+				onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+				onDragLeave={() => setOver(false)}
+				onDrop={(e) => { e.preventDefault(); setOver(false); send(e.dataTransfer.files); }}
+				className={`flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center transition-colors ${
+					over ? "border-brand bg-brand/5" : "border-border bg-card hover:border-brand/50"
+				}`}
+			>
+				<span className="text-sm font-medium text-foreground">
+					{busy ? "Uploading…" : "Drop PDFs here or click to choose"}
+				</span>
+				<span className="text-xs text-muted-foreground">
+					{names.length > 0 && !busy ? names.join(", ") : `Up to ${MAX_FILES} files · 4 MB each`}
+				</span>
+			</button>
+			<input
+				ref={inputRef}
+				type="file"
+				name="files"
+				accept="application/pdf"
+				multiple
+				className="hidden"
+				onChange={(e) => send(e.target.files)}
+			/>
+		</Form>
+	);
+}
+
 export default function KnowledgeBase({ loaderData, actionData }: Route.ComponentProps) {
 	const { docs, pinecone } = loaderData;
 	const nav = useNavigation();
@@ -95,31 +142,17 @@ export default function KnowledgeBase({ loaderData, actionData }: Route.Componen
 				</p>
 			)}
 
-			<section className="rounded-xl border border-border bg-card p-4">
-				<div className="flex flex-wrap items-center justify-between gap-3">
-					<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
-						<input
-							type="file"
-							name="files"
-							accept="application/pdf"
-							multiple
-							required
-							className="text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
-						/>
-						<Button type="submit" size="sm" disabled={busy}>
-							{busy ? "Uploading…" : "Upload"}
-						</Button>
-					</Form>
-					{docs.some((d) => d.status === "ready") && (
-						<a
-							href="/dashboard/downloads?kbdocs=all"
-							className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted"
-						>
-							Download all files (.zip)
-						</a>
-					)}
+			<DropZone busy={busy} />
+			{docs.some((d) => d.status === "ready") && (
+				<div className="mt-3 text-right">
+					<a
+						href="/dashboard/downloads?kbdocs=all"
+						className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted"
+					>
+						Download all files (.zip)
+					</a>
 				</div>
-			</section>
+			)}
 
 			<section className="mt-4 rounded-xl border border-border bg-card p-4">
 				<h2 className="mb-3 text-sm font-medium text-foreground">

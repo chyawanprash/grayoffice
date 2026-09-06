@@ -19,6 +19,7 @@ type QueueEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
 
 const ns = (orgId: string) => `kb_${orgId}`;
 const CHUNK = 1000;
+const ENTITY_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 
 export type KbDoc = {
 	id: string;
@@ -74,6 +75,9 @@ export async function ingestPdf(
 			metadata: { doc_id: docId, name },
 		}));
 		const n = await upsertChunks(env, ns(orgId), chunks);
+		await extractGraph(env, orgId, docId, name, text).catch((e) =>
+			console.error(`kb graph extract failed for ${docId}: ${e}`),
+		);
 		await env.DB.prepare(
 			"UPDATE kb_documents SET status = 'ready', chunks = ?, error = NULL WHERE id = ?",
 		)
@@ -88,6 +92,87 @@ export async function ingestPdf(
 			.run();
 		throw err;
 	}
+}
+
+/* ───────────────────────────────────────────────── memory graph */
+
+const GRAPH_SYSTEM = `You build a knowledge graph from a finance/accounting document.
+Return ONLY JSON, no prose, shaped exactly:
+{"entities":[{"name":"<short name>","kind":"<person|org|account|location|date|amount|other>"}],
+ "relations":[{"from":"<entity name>","to":"<entity name>","label":"<short verb phrase>"}]}
+Keep names canonical and deduplicated. At most 20 entities and 25 relations.`;
+
+/** Pull entities + relations out of a document and store them. Best effort. */
+async function extractGraph(
+	env: Env,
+	orgId: string,
+	docId: string,
+	name: string,
+	text: string,
+): Promise<void> {
+	const r = (await env.AI.run(ENTITY_MODEL, {
+		messages: [
+			{ role: "system", content: GRAPH_SYSTEM },
+			{ role: "user", content: text.slice(0, 12_000) },
+		],
+		max_tokens: 1200,
+	})) as { response?: string };
+	let parsed: { entities?: { name: string; kind?: string }[]; relations?: { from: string; to: string; label?: string }[] };
+	try {
+		parsed = JSON.parse((r.response ?? "").replace(/```json\s*|```/gi, "").trim());
+	} catch {
+		return;
+	}
+	const clean = (s: unknown) => String(s ?? "").trim().slice(0, 120);
+	const kinds = new Set(["person", "org", "account", "location", "date", "amount", "other"]);
+
+	await env.DB.batch([
+		env.DB.prepare("DELETE FROM kb_entities WHERE doc_id = ?").bind(docId),
+		env.DB.prepare("DELETE FROM kb_relations WHERE doc_id = ?").bind(docId),
+		...(parsed.entities ?? []).slice(0, 20).filter((e) => clean(e.name)).map((e) =>
+			env.DB.prepare(
+				"INSERT INTO kb_entities (id, org_id, doc_id, name, kind) VALUES (?, ?, ?, ?, ?)",
+			).bind(crypto.randomUUID(), orgId, docId, clean(e.name), kinds.has(String(e.kind)) ? String(e.kind) : "other"),
+		),
+		...(parsed.relations ?? []).slice(0, 25).filter((rel) => clean(rel.from) && clean(rel.to)).map((rel) =>
+			env.DB.prepare(
+				"INSERT INTO kb_relations (id, org_id, doc_id, source_name, target_name, label) VALUES (?, ?, ?, ?, ?, ?)",
+			).bind(crypto.randomUUID(), orgId, docId, clean(rel.from), clean(rel.to), clean(rel.label) || null),
+		),
+	]);
+}
+
+export type GraphNode = { name: string; kind: string; docs: number };
+export type GraphEdge = { source: string; target: string; label: string | null };
+
+/** The org's whole memory graph: one node per distinct entity name. */
+export async function kbGraph(
+	db: D1Database,
+	orgId: string,
+): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+	const [ents, rels] = await Promise.all([
+		db.prepare(
+			"SELECT name, kind, COUNT(DISTINCT doc_id) AS docs FROM kb_entities WHERE org_id = ? GROUP BY lower(name)",
+		).bind(orgId).all<GraphNode>(),
+		db.prepare(
+			"SELECT DISTINCT source_name AS source, target_name AS target, label FROM kb_relations WHERE org_id = ?",
+		).bind(orgId).all<GraphEdge>(),
+	]);
+	const nodes = ents.results ?? [];
+	const known = new Set(nodes.map((n) => n.name.toLowerCase()));
+	const edges = (rels.results ?? []).filter(
+		(e) => known.has(e.source.toLowerCase()) && known.has(e.target.toLowerCase()),
+	);
+	return { nodes, edges };
+}
+
+/** Most recent KB document activity (unix seconds), or null. */
+export async function kbLastSync(db: D1Database, orgId: string): Promise<number | null> {
+	const row = await db
+		.prepare("SELECT MAX(created_at) AS t FROM kb_documents WHERE org_id = ?")
+		.bind(orgId)
+		.first<{ t: number | null }>();
+	return row?.t ?? null;
 }
 
 /** Create a `kb_documents` row, stage the PDF in R2, queue it for indexing. */
@@ -113,7 +198,11 @@ export async function deleteDoc(env: QueueEnv, orgId: string, docId: string): Pr
 	await deleteByFilter(env, ns(orgId), { doc_id: docId });
 	const row = await env.DB.prepare("SELECT r2_key FROM kb_documents WHERE id = ? AND org_id = ?").bind(docId, orgId).first<{ r2_key: string | null }>();
 	if (row?.r2_key) await discardStaged(env.DOCS_BUCKET, row.r2_key);
-	await env.DB.prepare("DELETE FROM kb_documents WHERE id = ? AND org_id = ?").bind(docId, orgId).run();
+	await env.DB.batch([
+		env.DB.prepare("DELETE FROM kb_entities WHERE doc_id = ? AND org_id = ?").bind(docId, orgId),
+		env.DB.prepare("DELETE FROM kb_relations WHERE doc_id = ? AND org_id = ?").bind(docId, orgId),
+		env.DB.prepare("DELETE FROM kb_documents WHERE id = ? AND org_id = ?").bind(docId, orgId),
+	]);
 }
 
 /** The stored original PDF for a KB document. */

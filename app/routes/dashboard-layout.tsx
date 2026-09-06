@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import type { Route } from "./+types/dashboard-layout";
 import { getUser, logout, requireUserId } from "~/lib/auth.server";
 import { listOrgsForUser, requireOrg } from "~/lib/org.server";
+import { kbLastSync } from "~/lib/kb.server";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { DashboardSidebar } from "~/components/medesk/sidebar";
 import { DashboardTopbar } from "~/components/medesk/topbar";
@@ -23,7 +24,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const { orgId, role } = await requireOrg(request, context.cloudflare.env);
 	const orgs = await listOrgsForUser(DB, userId);
 	const org = orgs.find((o) => o.id === orgId)!;
-	return { user, org, orgs, role };
+	const lastSync = await kbLastSync(DB, orgId).catch(() => null);
+	return { user, org, orgs, role, lastSync };
 }
 
 export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
