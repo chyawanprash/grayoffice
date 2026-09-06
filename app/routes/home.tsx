@@ -101,7 +101,7 @@ export default function Home() {
 						reports — exceptions and human review included.
 					</p>
 					<div className="mt-8 flex flex-wrap items-center gap-3">
-						<Button render={<Link to="/auth" />} size="lg">
+						<Button render={<Link to="/auth?new" />} size="lg">
 							Get started <ArrowRight size={16} weight="bold" />
 						</Button>
 						<Button render={<a href="#workflows" />} variant="outline" size="lg">
@@ -201,7 +201,7 @@ export default function Home() {
 								Set up your first workflow in minutes.
 							</div>
 						</div>
-						<Button render={<Link to="/auth" />} size="lg">
+						<Button render={<Link to="/auth?new" />} size="lg">
 							Get started <ArrowRight size={16} weight="bold" />
 						</Button>
 					</div>

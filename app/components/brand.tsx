@@ -85,7 +85,7 @@ export function SiteNav() {
 					>
 						Sign in
 					</Button>
-					<Button render={<Link to="/auth" />} size="md">
+					<Button render={<Link to="/auth?new" />} size="md">
 						Get started
 					</Button>
 				</div>

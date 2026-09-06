@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Form, Link, redirect, useNavigation } from "react-router";
-import { ArrowLeft } from "@phosphor-icons/react";
-import { Logo } from "~/components/brand";
+import { Form, redirect, useNavigation } from "react-router";
+import { AuthShell } from "~/components/auth-shell";
+import { OtpField } from "~/components/otp-field";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/auth.mfa";
 import {
@@ -106,14 +106,9 @@ export default function MfaChallenge({ actionData, loaderData }: Route.Component
 	};
 
 	return (
-		<div className="flex min-h-screen w-full flex-col items-center justify-center bg-surface p-6">
-			<div className="w-full max-w-sm">
-				<Link to="/auth" className="mb-8 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900">
-					<ArrowLeft size={14} /> Back to sign in
-				</Link>
-				<Logo className="text-base" />
-
-				<h1 className="mt-6 text-2xl font-semibold tracking-tight text-neutral-900">
+		<AuthShell back={{ to: "/auth", label: "Back to sign in" }}>
+			<div>
+				<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
 					{titles[mode]}
 				</h1>
 				<p className="mt-2 text-sm text-neutral-500">
@@ -122,16 +117,20 @@ export default function MfaChallenge({ actionData, loaderData }: Route.Component
 					{mode === "recovery" && "Use one of the recovery codes you saved when setting up two-factor auth."}
 				</p>
 
-				<Form method="post" className="mt-6 space-y-3" key={mode}>
+				<Form method="post" className="mt-6 space-y-4" key={mode}>
 					<input type="hidden" name="intent" value={mode} />
-					<input
-						name="code"
-						inputMode={mode === "recovery" ? "text" : "numeric"}
-						autoComplete="one-time-code"
-						autoFocus
-						placeholder={mode === "recovery" ? "xxxxx-xxxxx" : "123456"}
-						className="h-11 w-full rounded-lg border border-neutral-300 bg-surface px-3 text-center text-lg tracking-[0.3em] text-neutral-900 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-					/>
+					{mode === "recovery" ? (
+						<input
+							name="code"
+							inputMode="text"
+							autoComplete="one-time-code"
+							autoFocus
+							placeholder="xxxxx-xxxxx"
+							className="h-11 w-full rounded-lg border border-neutral-300 bg-surface px-3 text-center text-lg tracking-[0.3em] text-neutral-900 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+						/>
+					) : (
+						<OtpField autoFocus />
+					)}
 					{actionData && "error" in actionData && actionData.error && (
 						<p className="text-sm text-danger">{actionData.error}</p>
 					)}
@@ -174,6 +173,6 @@ export default function MfaChallenge({ actionData, loaderData }: Route.Component
 					)}
 				</div>
 			</div>
-		</div>
+		</AuthShell>
 	);
 }

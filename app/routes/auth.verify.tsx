@@ -1,6 +1,6 @@
-import { Form, Link, redirect, useNavigation } from "react-router";
-import { ArrowLeft } from "@phosphor-icons/react";
-import { Logo } from "~/components/brand";
+import { Form, redirect, useNavigation } from "react-router";
+import { AuthShell } from "~/components/auth-shell";
+import { OtpField } from "~/components/otp-field";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/auth.verify";
 import {
@@ -83,17 +83,9 @@ export default function VerifyEmail({ actionData, loaderData }: Route.ComponentP
 	const sent = actionData && "sent" in actionData ? actionData.sent : false;
 
 	return (
-		<div className="flex min-h-screen w-full flex-col items-center justify-center bg-surface p-6">
-			<div className="w-full max-w-sm">
-				<Link
-					to="/auth"
-					className="mb-8 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900"
-				>
-					<ArrowLeft size={14} /> Back to sign in
-				</Link>
-				<Logo className="text-base" />
-
-				<h1 className="mt-6 text-2xl font-semibold tracking-tight text-neutral-900">
+		<AuthShell back={{ to: "/auth", label: "Back to sign in" }}>
+			<div>
+				<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
 					Confirm your email
 				</h1>
 				<p className="mt-2 text-sm text-neutral-500">
@@ -101,16 +93,9 @@ export default function VerifyEmail({ actionData, loaderData }: Route.ComponentP
 					setting up your account.
 				</p>
 
-				<Form method="post" className="mt-6 space-y-3">
+				<Form method="post" className="mt-6 space-y-4">
 					<input type="hidden" name="intent" value="verify" />
-					<input
-						name="code"
-						inputMode="numeric"
-						autoComplete="one-time-code"
-						autoFocus
-						placeholder="123456"
-						className="h-11 w-full rounded-lg border border-neutral-300 bg-surface px-3 text-center text-lg tracking-[0.3em] text-neutral-900 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-					/>
+					<OtpField autoFocus />
 					{err && <p className="text-sm text-danger">{err}</p>}
 					{sent && <p className="text-sm text-brand">New code sent.</p>}
 					<Button type="submit" size="block" disabled={busy}>
@@ -129,6 +114,6 @@ export default function VerifyEmail({ actionData, loaderData }: Route.ComponentP
 					</button>
 				</Form>
 			</div>
-		</div>
+		</AuthShell>
 	);
 }
