@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Form, useNavigation } from "react-router";
-import { CheckCircle, Copy, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
+import { CheckCircle2, Copy, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/dashboard.settings";
 import {
@@ -129,19 +129,25 @@ export async function action({ request, context }: Route.ActionArgs) {
 	return { error: "Unknown request." };
 }
 
+const cardClass = "rounded-xl bg-card p-4 text-card-foreground";
+const cardTitleClass = "text-lg leading-6 font-medium text-foreground";
+const fieldClass =
+	"h-9 rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30";
+
 function RecoveryCodes({ codes }: { codes: string[] }) {
 	return (
-		<div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
-			<div className="flex items-center gap-2 text-sm font-medium text-amber-900">
-				<WarningCircle size={16} weight="fill" /> Save these recovery codes now
+		<div className="mt-4 rounded-lg border border-[var(--dashboard-no-show)]/40 bg-[color-mix(in_oklch,var(--dashboard-no-show)_10%,transparent)] p-4">
+			<div className="flex items-center gap-2 text-sm font-medium text-foreground">
+				<TriangleAlert className="size-4 text-[var(--dashboard-no-show)]" /> Save
+				these recovery codes now
 			</div>
-			<p className="mt-1 text-xs text-amber-800">
+			<p className="mt-1 text-xs text-muted-foreground">
 				Each code works once if you lose your authenticator. They won’t be shown
 				again.
 			</p>
-			<div className="mt-3 grid grid-cols-2 gap-1.5 font-mono text-sm text-neutral-800">
+			<div className="mt-3 grid grid-cols-2 gap-1.5 font-mono text-sm text-foreground">
 				{codes.map((c) => (
-					<span key={c} className="rounded bg-surface px-2 py-1">
+					<span key={c} className="rounded bg-background px-2 py-1">
 						{c}
 					</span>
 				))}
@@ -167,207 +173,222 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 		actionData && "recoveryCodes" in actionData ? actionData.recoveryCodes : null;
 
 	return (
-		<div className="mx-auto max-w-2xl">
-			<h1 className="text-xl font-semibold tracking-tight text-neutral-900">
-				Settings
-			</h1>
-			<p className="mt-1 text-sm text-neutral-500">Your account and security</p>
+		<div className="flex flex-col gap-6 p-4 md:p-6">
+			<div className="flex flex-col gap-2">
+				<h1 className="text-2xl leading-[1.4] font-normal text-foreground">
+					Settings
+				</h1>
+				<p className="text-sm text-muted-foreground">
+					Your account and security
+				</p>
+			</div>
 
-			<section className="mt-8 rounded-xl border border-neutral-200 bg-surface p-6">
-				<h2 className="font-medium text-neutral-900">Account information</h2>
-				<dl className="mt-4 divide-y divide-neutral-100 text-sm">
-					{loaderData.name && (
-						<div className="flex justify-between py-2.5">
-							<dt className="text-neutral-500">Name</dt>
-							<dd className="text-neutral-900">{loaderData.name}</dd>
-						</div>
-					)}
-					<div className="flex justify-between py-2.5">
-						<dt className="text-neutral-500">Email</dt>
-						<dd className="text-neutral-900">{loaderData.email}</dd>
-					</div>
-					<div className="flex justify-between py-2.5">
-						<dt className="text-neutral-500">Sign-in methods</dt>
-						<dd className="text-neutral-900">
-							{[
-								loaderData.hasPassword && "Password",
-								loaderData.googleLinked && "Google",
-							]
-								.filter(Boolean)
-								.join(" · ") || "—"}
-						</dd>
-					</div>
-					<div className="flex justify-between py-2.5">
-						<dt className="text-neutral-500">Two-factor auth</dt>
-						<dd className={loaderData.totpEnabled ? "text-green-700" : "text-neutral-900"}>
-							{loaderData.totpEnabled ? "On" : "Off"}
-						</dd>
-					</div>
-					{loaderData.createdAt && (
-						<div className="flex justify-between py-2.5">
-							<dt className="text-neutral-500">Member since</dt>
-							<dd className="text-neutral-900">
-								{new Date(loaderData.createdAt * 1000).toLocaleDateString(undefined, {
-									year: "numeric",
-									month: "long",
-									day: "numeric",
-								})}
-							</dd>
-						</div>
-					)}
-				</dl>
-				<div className="mt-4 border-t border-neutral-200 pt-4">
-					<ChangePasswordDialog
-						hasPassword={loaderData.hasPassword}
-						error={pwError}
-						saved={passwordSaved}
-						busy={busy}
-					/>
-				</div>
-			</section>
-
-			<section className="mt-6 rounded-xl border border-neutral-200 bg-surface p-6">
-				<div className="flex items-start gap-3">
-					<div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-tint text-brand">
-						<ShieldCheck size={18} weight="duotone" />
-					</div>
-					<div className="min-w-0 flex-1">
-						<div className="flex items-center gap-2">
-							<h2 className="font-medium text-neutral-900">
-								Two-factor authentication
-							</h2>
-							{loaderData.totpEnabled && (
-								<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-									<CheckCircle size={12} weight="fill" /> On
-								</span>
-							)}
-						</div>
-						<p className="mt-1 text-sm text-neutral-500">
-							Require an authenticator code (or an emailed code) at sign in.
-						</p>
-
-						{err && (
-							<p className="mt-3 text-sm text-danger">{err}</p>
-						)}
-
-						{/* --- Not enrolled --- */}
-						{!loaderData.totpEnabled && !loaderData.enroll && (
-							<Form method="post" className="mt-4">
-								<input type="hidden" name="intent" value="mfa-start" />
-								<Button type="submit" disabled={busy} size="sm">
-									Set up two-factor auth
-								</Button>
-							</Form>
-						)}
-
-						{/* --- Enrolling: show QR + confirm --- */}
-						{!loaderData.totpEnabled && loaderData.enroll && (
-							<div className="mt-4">
-								<p className="text-sm text-neutral-600">
-									1. Scan this with Google Authenticator, 1Password, or any TOTP
-									app.
-								</p>
-								<div
-									className="mt-3 inline-block rounded-lg border border-neutral-200 bg-white p-2"
-									dangerouslySetInnerHTML={{ __html: loaderData.enroll.qr }}
-								/>
-								<p className="mt-2 break-all text-xs text-neutral-400">
-									Or enter this key manually:{" "}
-									<span className="font-mono text-neutral-600">
-										{loaderData.enroll.secret}
-									</span>
-								</p>
-								<p className="mt-4 text-sm text-neutral-600">
-									2. Enter the 6-digit code it shows:
-								</p>
-								<Form method="post" className="mt-2 flex flex-wrap items-center gap-2">
-									<input type="hidden" name="intent" value="mfa-confirm" />
-									<input
-										name="code"
-										inputMode="numeric"
-										autoComplete="one-time-code"
-										placeholder="123456"
-										className="h-9 w-32 rounded-lg border border-neutral-300 bg-surface px-3 text-center tracking-[0.3em] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-									/>
-									<Button type="submit" disabled={busy} size="sm">
-										Turn on
-									</Button>
-									<button
-										type="submit"
-										name="intent"
-										value="mfa-cancel"
-										formNoValidate
-										className="text-sm text-neutral-500 hover:text-neutral-900"
-									>
-										Cancel
-									</button>
-								</Form>
+			<div className="grid gap-3 lg:max-w-3xl">
+				<section className={cardClass}>
+					<h2 className={cardTitleClass}>Account information</h2>
+					<dl className="mt-4 divide-y divide-border/60 text-sm">
+						{loaderData.name && (
+							<div className="flex justify-between py-2.5">
+								<dt className="text-muted-foreground">Name</dt>
+								<dd className="text-foreground">{loaderData.name}</dd>
 							</div>
 						)}
+						<div className="flex justify-between py-2.5">
+							<dt className="text-muted-foreground">Email</dt>
+							<dd className="text-foreground">{loaderData.email}</dd>
+						</div>
+						<div className="flex justify-between py-2.5">
+							<dt className="text-muted-foreground">Sign-in methods</dt>
+							<dd className="text-foreground">
+								{[
+									loaderData.hasPassword && "Password",
+									loaderData.googleLinked && "Google",
+								]
+									.filter(Boolean)
+									.join(" · ") || "—"}
+							</dd>
+						</div>
+						<div className="flex justify-between py-2.5">
+							<dt className="text-muted-foreground">Two-factor auth</dt>
+							<dd
+								className={
+									loaderData.totpEnabled
+										? "text-[var(--dashboard-completed)]"
+										: "text-foreground"
+								}
+							>
+								{loaderData.totpEnabled ? "On" : "Off"}
+							</dd>
+						</div>
+						{loaderData.createdAt && (
+							<div className="flex justify-between py-2.5">
+								<dt className="text-muted-foreground">Member since</dt>
+								<dd className="text-foreground">
+									{new Date(loaderData.createdAt * 1000).toLocaleDateString(
+										undefined,
+										{ year: "numeric", month: "long", day: "numeric" },
+									)}
+								</dd>
+							</div>
+						)}
+					</dl>
+					<div className="mt-4 border-t border-border/60 pt-4">
+						<ChangePasswordDialog
+							hasPassword={loaderData.hasPassword}
+							error={pwError}
+							saved={passwordSaved}
+							busy={busy}
+						/>
+					</div>
+				</section>
 
-						{freshCodes && <RecoveryCodes codes={freshCodes} />}
+				<section className={cardClass}>
+					<div className="flex items-start gap-3">
+						<div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+							<ShieldCheck className="size-4.5" />
+						</div>
+						<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-2">
+								<h2 className={cardTitleClass}>Two-factor authentication</h2>
+								{loaderData.totpEnabled && (
+									<span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_oklch,var(--dashboard-completed)_14%,transparent)] px-2 py-0.5 text-xs font-medium text-[var(--dashboard-completed)]">
+										<CheckCircle2 className="size-3" /> On
+									</span>
+								)}
+							</div>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Require an authenticator code (or an emailed code) at sign in.
+							</p>
 
-						{/* --- Enabled --- */}
-						{loaderData.totpEnabled && (
-							<div className="mt-4 space-y-4">
-								<p className="text-sm text-neutral-500">
-									{loaderData.recoveryCount} recovery code
-									{loaderData.recoveryCount === 1 ? "" : "s"} remaining.
-								</p>
-								<div className="flex flex-wrap gap-2">
-									<Form method="post">
+							{err && <p className="mt-3 text-sm text-destructive">{err}</p>}
+
+							{/* --- Not enrolled --- */}
+							{!loaderData.totpEnabled && !loaderData.enroll && (
+								<Form method="post" className="mt-4">
+									<input type="hidden" name="intent" value="mfa-start" />
+									<Button type="submit" disabled={busy} size="sm">
+										Set up two-factor auth
+									</Button>
+								</Form>
+							)}
+
+							{/* --- Enrolling: show QR + confirm --- */}
+							{!loaderData.totpEnabled && loaderData.enroll && (
+								<div className="mt-4">
+									<p className="text-sm text-foreground/80">
+										1. Scan this with Google Authenticator, 1Password, or any
+										TOTP app.
+									</p>
+									<div
+										className="mt-3 inline-block rounded-lg border border-border bg-white p-2"
+										dangerouslySetInnerHTML={{ __html: loaderData.enroll.qr }}
+									/>
+									<p className="mt-2 break-all text-xs text-muted-foreground">
+										Or enter this key manually:{" "}
+										<span className="font-mono text-foreground/80">
+											{loaderData.enroll.secret}
+										</span>
+									</p>
+									<p className="mt-4 text-sm text-foreground/80">
+										2. Enter the 6-digit code it shows:
+									</p>
+									<Form
+										method="post"
+										className="mt-2 flex flex-wrap items-center gap-2"
+									>
+										<input type="hidden" name="intent" value="mfa-confirm" />
 										<input
-											type="hidden"
-											name="intent"
-											value="mfa-recovery-regen"
+											name="code"
+											inputMode="numeric"
+											autoComplete="one-time-code"
+											placeholder="123456"
+											className={`${fieldClass} w-32 text-center tracking-[0.3em]`}
 										/>
-										<Button type="submit" variant="outline" size="sm" disabled={busy}>
-											<Copy size={14} /> Regenerate recovery codes
+										<Button type="submit" disabled={busy} size="sm">
+											Turn on
+										</Button>
+										<button
+											type="submit"
+											name="intent"
+											value="mfa-cancel"
+											formNoValidate
+											className="text-sm text-muted-foreground hover:text-foreground"
+										>
+											Cancel
+										</button>
+									</Form>
+								</div>
+							)}
+
+							{freshCodes && <RecoveryCodes codes={freshCodes} />}
+
+							{/* --- Enabled --- */}
+							{loaderData.totpEnabled && (
+								<div className="mt-4 space-y-4">
+									<p className="text-sm text-muted-foreground">
+										{loaderData.recoveryCount} recovery code
+										{loaderData.recoveryCount === 1 ? "" : "s"} remaining.
+									</p>
+									<div className="flex flex-wrap gap-2">
+										<Form method="post">
+											<input
+												type="hidden"
+												name="intent"
+												value="mfa-recovery-regen"
+											/>
+											<Button
+												type="submit"
+												variant="outline"
+												size="sm"
+												disabled={busy}
+											>
+												<Copy className="size-3.5" /> Regenerate recovery codes
+											</Button>
+										</Form>
+									</div>
+									<Form
+										method="post"
+										className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4"
+									>
+										<input type="hidden" name="intent" value="mfa-disable" />
+										<input
+											name="code"
+											inputMode="numeric"
+											placeholder="Code to disable"
+											className={`${fieldClass} w-40`}
+										/>
+										<Button
+											type="submit"
+											variant="outline"
+											size="sm"
+											disabled={busy}
+											className="text-destructive"
+										>
+											Turn off 2FA
 										</Button>
 									</Form>
 								</div>
-								<Form method="post" className="flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-4">
-									<input type="hidden" name="intent" value="mfa-disable" />
-									<input
-										name="code"
-										inputMode="numeric"
-										placeholder="Code to disable"
-										className="h-9 w-40 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-									/>
-									<Button
-										type="submit"
-										variant="outline"
-										size="sm"
-										disabled={busy}
-										className="text-danger"
-									>
-										Turn off 2FA
-									</Button>
-								</Form>
-							</div>
-						)}
+							)}
+						</div>
 					</div>
-				</div>
-			</section>
+				</section>
 
-			<section className="mt-6 rounded-xl border border-danger/30 bg-surface p-6">
-				<h2 className="font-medium text-danger">Delete account</h2>
-				<p className="mt-1 text-sm text-neutral-500">
-					Permanently removes your account, sign-in methods, recovery codes, and
-					saved assistant memory. This can’t be undone.
-				</p>
-				<DeleteAccountDialog
-					hasPassword={loaderData.hasPassword}
-					error={deleteError}
-					busy={busy}
-				/>
-			</section>
+				<section className={`${cardClass} border border-destructive/30`}>
+					<h2 className={`${cardTitleClass} text-destructive`}>Delete account</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Permanently removes your account, sign-in methods, recovery codes,
+						and saved assistant memory. This can’t be undone.
+					</p>
+					<DeleteAccountDialog
+						hasPassword={loaderData.hasPassword}
+						error={deleteError}
+						busy={busy}
+					/>
+				</section>
+			</div>
 		</div>
 	);
 }
-
-const fieldClass =
-	"h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
 
 function ChangePasswordDialog({
 	hasPassword,
@@ -398,22 +419,26 @@ function ChangePasswordDialog({
 				>
 					{hasPassword ? "Change password" : "Set a password"}
 				</Button>
-				{saved && <span className="text-sm text-green-700">Password updated.</span>}
+				{saved && (
+					<span className="text-sm text-[var(--dashboard-completed)]">
+						Password updated.
+					</span>
+				)}
 			</div>
 
 			<dialog
 				ref={ref}
-				className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-neutral-200 bg-surface p-6 backdrop:bg-black/40"
+				className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-border bg-card p-6 text-card-foreground backdrop:bg-black/40"
 			>
-				<h3 className="font-medium text-neutral-900">
+				<h3 className="font-medium text-foreground">
 					{hasPassword ? "Change password" : "Set a password"}
 				</h3>
-				<p className="mt-1 text-sm text-neutral-500">
+				<p className="mt-1 text-sm text-muted-foreground">
 					{hasPassword
 						? "You’ll stay signed in on this device."
 						: "Add a password so you can sign in without Google."}
 				</p>
-				{error && <p className="mt-3 text-sm text-danger">{error}</p>}
+				{error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 				<Form method="post" className="mt-4 grid gap-2">
 					<input type="hidden" name="intent" value="change-password" />
 					{hasPassword && (
@@ -480,7 +505,7 @@ function DeleteAccountDialog({
 				type="button"
 				variant="outline"
 				size="sm"
-				className="mt-4 text-danger"
+				className="mt-4 text-destructive"
 				onClick={() => ref.current?.showModal()}
 			>
 				Delete account
@@ -488,21 +513,21 @@ function DeleteAccountDialog({
 
 			<dialog
 				ref={ref}
-				className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-neutral-200 bg-surface p-6 backdrop:bg-black/40"
+				className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-border bg-card p-6 text-card-foreground backdrop:bg-black/40"
 			>
-				<h3 className="font-medium text-neutral-900">Delete your account?</h3>
-				<p className="mt-1 text-sm text-neutral-500">
+				<h3 className="font-medium text-foreground">Delete your account?</h3>
+				<p className="mt-1 text-sm text-muted-foreground">
 					This is permanent. Type <b>delete my account</b> below
 					{hasPassword && " and enter your password"} to confirm.
 				</p>
-				{error && <p className="mt-3 text-sm text-danger">{error}</p>}
+				{error && <p className="mt-3 text-sm text-destructive">{error}</p>}
 				<Form method="post" className="mt-4 grid gap-2">
 					<input type="hidden" name="intent" value="delete-account" />
 					<input
 						name="phrase"
 						autoComplete="off"
 						placeholder="delete my account"
-						className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
+						className={`${fieldClass} focus:border-destructive focus:ring-destructive/30`}
 					/>
 					{hasPassword && (
 						<input
@@ -510,7 +535,7 @@ function DeleteAccountDialog({
 							type="password"
 							autoComplete="current-password"
 							placeholder="Current password"
-							className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
+							className={`${fieldClass} focus:border-destructive focus:ring-destructive/30`}
 						/>
 					)}
 					<div className="mt-2 flex items-center justify-end gap-2">
