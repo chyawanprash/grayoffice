@@ -24,7 +24,7 @@ export async function getOrgBank(db: D1Database, orgId: string): Promise<OrgBank
 
 async function bankJson(url: string, init?: RequestInit): Promise<any> {
 	const res = await fetch(url, init);
-	const body = await res.json().catch(() => ({}));
+	const body: any = await res.json().catch(() => ({}));
 	if (!res.ok) {
 		const msg =
 			(body && (body.error || body.message)) ||
