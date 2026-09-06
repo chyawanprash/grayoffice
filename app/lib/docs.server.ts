@@ -9,6 +9,7 @@
  */
 
 type Env = { AI: Ai; DB: D1Database };
+type QueueEnv = Env & { KB_QUEUE: Queue };
 
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 
@@ -47,6 +48,42 @@ export function getExtract(db: D1Database, orgId: string, id: string): Promise<D
 
 export async function deleteExtract(db: D1Database, orgId: string, id: string): Promise<void> {
 	await db.prepare("DELETE FROM doc_extracts WHERE id = ? AND org_id = ?").bind(id, orgId).run();
+}
+
+function bytesToB64(bytes: ArrayBuffer): string {
+	let bin = "";
+	const u8 = new Uint8Array(bytes);
+	for (let i = 0; i < u8.length; i += 0x8000)
+		bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+	return btoa(bin);
+}
+
+/**
+ * Create a `doc_extracts` row and queue the PDF for extraction. Shared by the
+ * Documents page and the agent's saveDocumentFromUrl / chat-attachment paths.
+ * Returns the new doc id.
+ */
+export async function queueExtraction(
+	env: QueueEnv,
+	orgId: string,
+	name: string,
+	bytes: ArrayBuffer,
+): Promise<string> {
+	const docId = crypto.randomUUID();
+	const safeName = name.slice(0, 200);
+	await env.DB.prepare(
+		"INSERT INTO doc_extracts (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
+	)
+		.bind(docId, orgId, safeName, bytes.byteLength)
+		.run();
+	await env.KB_QUEUE.send({
+		kind: "extract",
+		orgId,
+		docId,
+		name: safeName,
+		dataB64: bytesToB64(bytes),
+	});
+	return docId;
 }
 
 /** Convert one PDF, write the JSON back onto its row. */

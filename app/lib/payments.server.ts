@@ -504,6 +504,105 @@ export async function fetchResource(
 	}
 }
 
+// ── Refunds (write) ────────────────────────────────────────────────────────
+
+/**
+ * Issue a refund on a connected gateway. `id` is the provider's payment id
+ * (Stripe: pi_/ch_; Razorpay: pay_; Polar/Cashfree: order id; Dodo: payment id).
+ * `amount` is in major currency units - omit for a full refund where the
+ * gateway supports it (Cashfree requires it). Best-effort per provider; the
+ * gateway's own error is returned verbatim.
+ */
+export async function createRefund(
+	i: Integration,
+	{ id, amount, reason }: { id: string; amount?: number; reason?: string },
+): Promise<{ ok: true; refund: unknown } | { error: string }> {
+	const meta = PROVIDER_APIS[i.provider];
+	const minor = amount != null ? Math.round(amount * meta.amountDivisor) : undefined;
+	const base = meta.base(i.mode);
+	const auth = authHeaders(i);
+	const jsonHeaders = { ...auth, "content-type": "application/json" };
+
+	try {
+		let res: Response;
+		switch (i.provider) {
+			case "stripe": {
+				const form = new URLSearchParams();
+				form.set(id.startsWith("ch_") ? "charge" : "payment_intent", id);
+				if (minor != null) form.set("amount", String(minor));
+				if (reason) form.set("reason", reason);
+				res = await fetch(`${base}/refunds`, {
+					method: "POST",
+					headers: { ...auth, "content-type": "application/x-www-form-urlencoded" },
+					body: form,
+				});
+				break;
+			}
+			case "razorpay":
+				res = await fetch(`${base}/payments/${id}/refund`, {
+					method: "POST",
+					headers: jsonHeaders,
+					body: JSON.stringify(minor != null ? { amount: minor } : {}),
+				});
+				break;
+			case "cashfree":
+				if (amount == null) return { error: "Cashfree needs an explicit refund amount" };
+				res = await fetch(`${base}/orders/${id}/refunds`, {
+					method: "POST",
+					headers: jsonHeaders,
+					body: JSON.stringify({
+						refund_amount: amount,
+						refund_id: `go_${crypto.randomUUID().slice(0, 12)}`,
+						refund_note: reason ?? "Gray Office agent",
+					}),
+				});
+				break;
+			case "polar":
+				res = await fetch(`${base}/refunds`, {
+					method: "POST",
+					headers: jsonHeaders,
+					body: JSON.stringify({
+						order_id: id,
+						reason: reason ?? "customer_request",
+						...(minor != null ? { amount: minor } : {}),
+					}),
+				});
+				break;
+			case "dodopayments":
+				res = await fetch(`${base}/refunds`, {
+					method: "POST",
+					headers: jsonHeaders,
+					body: JSON.stringify({
+						payment_id: id,
+						...(minor != null ? { amount: minor } : {}),
+						...(reason ? { reason } : {}),
+					}),
+				});
+				break;
+		}
+
+		const text = await res.text();
+		let body: any = null;
+		try {
+			body = JSON.parse(text);
+		} catch {
+			/* ignore */
+		}
+		if (!res.ok) {
+			const msg =
+				body?.error?.message ||
+				body?.message ||
+				body?.error?.description ||
+				body?.error ||
+				text.slice(0, 200);
+			return { error: `${res.status}: ${msg}` };
+		}
+		return { ok: true, refund: body ?? text };
+	} catch (err) {
+		return { error: err instanceof Error ? err.message : String(err) };
+	}
+}
+
 // ── Webhook verification ───────────────────────────────────────────────────
 
 const enc = new TextEncoder();

@@ -3,7 +3,7 @@ import { Form, useNavigation, useRevalidator } from "react-router";
 import type { Route } from "./+types/dashboard.documents";
 import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
-import { deleteExtract, listExtracts } from "~/lib/docs.server";
+import { deleteExtract, listExtracts, queueExtraction } from "~/lib/docs.server";
 
 export function meta() {
 	return [{ title: "Documents | Gray Office" }];
@@ -17,13 +17,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const { orgId } = await requireOrg(request, env);
 	const { results } = await listExtracts(env.DB, orgId);
 	return { docs: results ?? [] };
-}
-
-function bytesToB64(bytes: Uint8Array): string {
-	let bin = "";
-	for (let i = 0; i < bytes.length; i += 0x8000)
-		bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-	return btoa(bin);
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -49,14 +42,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 			skipped.push(file.name);
 			continue;
 		}
-		const docId = crypto.randomUUID();
-		await env.DB.prepare(
-			"INSERT INTO doc_extracts (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
-		)
-			.bind(docId, orgId, file.name.slice(0, 200), file.size)
-			.run();
-		const dataB64 = bytesToB64(new Uint8Array(await file.arrayBuffer()));
-		await env.KB_QUEUE.send({ kind: "extract", orgId, docId, name: file.name.slice(0, 200), dataB64 });
+		await queueExtraction(env, orgId, file.name, await file.arrayBuffer());
 		queued++;
 	}
 

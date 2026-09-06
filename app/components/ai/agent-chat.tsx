@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { Sparkles } from "lucide-react";
+import { Paperclip, Sparkles, X } from "lucide-react";
 import { LoadingState } from "./loading-state";
 import { ThinkingState } from "./thinking-state";
 import { ToolChips, type ToolStepData } from "./tool-chips";
@@ -16,7 +16,16 @@ const SUGGESTIONS = [
 	"Any exceptions in the audit log?",
 ];
 
-const CONFIRM_TOOLS = ["bankCredit", "bankDebit", "bankTransfer"];
+const CONFIRM_TOOLS = ["bankCredit", "bankDebit", "bankTransfer", "bankSubscribe", "refundPayment"];
+
+function fileToPart(f: File): Promise<{ type: "file"; mediaType: string; filename: string; url: string }> {
+	return new Promise((resolve, reject) => {
+		const r = new FileReader();
+		r.onload = () => resolve({ type: "file", mediaType: f.type || "application/pdf", filename: f.name, url: r.result as string });
+		r.onerror = () => reject(r.error);
+		r.readAsDataURL(f);
+	});
+}
 
 type AnyPart = {
 	type: string;
@@ -39,6 +48,16 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 	});
 	const busy = status === "submitted" || status === "streaming";
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const fileRef = useRef<HTMLInputElement>(null);
+	const [staged, setStaged] = useState<File[]>([]);
+
+	const send = async (text: string) => {
+		const t = text.trim();
+		if (!t && staged.length === 0) return;
+		const files = staged.length ? await Promise.all(staged.map(fileToPart)) : undefined;
+		setStaged([]);
+		sendMessage({ text: t || "Please process the attached document(s).", files });
+	};
 
 	useEffect(() => {
 		scrollRef.current?.scrollTo({ top: 9e9, behavior: "smooth" });
@@ -170,12 +189,55 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 				)}
 			</div>
 
-			<div className={compact ? "border-t border-line p-3" : "pt-3"}>
-				<PromptBar
-					demo={false}
-					placeholder="Ask the finance agent…"
-					onSend={(t) => t.trim() && sendMessage({ text: t })}
-				/>
+			<div className={compact ? "space-y-2 border-t border-line p-3" : "space-y-2 pt-3"}>
+				{staged.length > 0 && (
+					<div className="flex flex-wrap gap-1.5">
+						{staged.map((f, i) => (
+							<span
+								key={i}
+								className="inline-flex items-center gap-1.5 rounded-chip bg-field px-2 py-1 text-[11.5px] text-ink-2 shadow-hairline"
+							>
+								<Paperclip className="size-3" />
+								<span className="max-w-40 truncate">{f.name}</span>
+								<button
+									type="button"
+									aria-label={`Remove ${f.name}`}
+									onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}
+									className="text-ink-3 hover:text-ink"
+								>
+									<X className="size-3" />
+								</button>
+							</span>
+						))}
+					</div>
+				)}
+				<div className="flex items-end gap-2">
+					<input
+						ref={fileRef}
+						type="file"
+						accept="application/pdf"
+						multiple
+						className="hidden"
+						onChange={(e) => {
+							const picked = Array.from(e.target.files ?? []).filter((f) =>
+								/pdf/i.test(f.type) || /\.pdf$/i.test(f.name),
+							);
+							setStaged((s) => [...s, ...picked].slice(0, 10));
+							e.target.value = "";
+						}}
+					/>
+					<button
+						type="button"
+						aria-label="Attach PDF"
+						onClick={() => fileRef.current?.click()}
+						className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink-3 transition-colors hover:bg-hover hover:text-ink"
+					>
+						<Paperclip className="size-4" />
+					</button>
+					<div className="min-w-0 flex-1">
+						<PromptBar demo={false} placeholder="Ask the finance agent, or attach a PDF…" onSend={send} />
+					</div>
+				</div>
 			</div>
 		</div>
 	);
