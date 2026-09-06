@@ -33,6 +33,7 @@ export default [
 		route("dashboard/search", "routes/dashboard.search.tsx"),
 		route("dashboard/invoices", "routes/dashboard.invoices.tsx"),
 		route("dashboard/inventory", "routes/dashboard.inventory.tsx"),
+		route("dashboard/inventory/:category", "routes/dashboard.inventory.$category.tsx"),
 		route("dashboard/agent-model", "routes/dashboard.agent-model.tsx"),
 		route("dashboard/downloads", "routes/dashboard.downloads.tsx"),
 		route("dashboard/integrations", "routes/dashboard.integrations.tsx"),

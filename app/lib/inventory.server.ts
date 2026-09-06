@@ -168,8 +168,9 @@ export type InventoryCategoryGroup = {
 };
 
 /** The whole grid for one year, grouped by category, with subtotals + totals. */
-export async function inventoryGrid(db: D1Database, orgId: string, year: number) {
-	const items = await listInventory(db, orgId);
+export async function inventoryGrid(db: D1Database, orgId: string, year: number, category?: string) {
+	const all = await listInventory(db, orgId);
+	const items = category ? all.filter((i) => i.category === category) : all;
 	const groups = new Map<string, InventoryCategoryGroup>();
 	const grandMonths = new Array(12).fill(0);
 
