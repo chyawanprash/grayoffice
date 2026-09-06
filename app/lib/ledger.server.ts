@@ -328,7 +328,23 @@ export async function getInvoice(db: D1Database, orgId: string, id: string) {
 			 WHERE i.id = ? AND i.org_id = ?`,
 		)
 		.bind(id, orgId)
-		.first<Record<string, unknown>>();
+		.first<{
+			id: string;
+			number: string;
+			direction: string;
+			status: string;
+			issue_date: string;
+			due_date: string | null;
+			place_of_supply: string | null;
+			reverse_charge: number;
+			company: string;
+			gstin: string | null;
+			company_state: string | null;
+			subtotal_cents: number;
+			tax_cents: number;
+			total_cents: number;
+			notes: string | null;
+		}>();
 	if (!inv) return null;
 	const { results: lines } = await db
 		.prepare("SELECT description, hsn_sac, qty, unit_price_cents, gst_rate, taxable_cents, cgst_cents, sgst_cents, igst_cents, line_total_cents FROM invoice_lines WHERE invoice_id = ?")

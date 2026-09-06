@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import { useFetcher } from "react-router";
 import { DefaultChatTransport } from "ai";
 import { Paperclip, Sparkles, X } from "lucide-react";
 import { LoadingState } from "./loading-state";
@@ -7,7 +8,7 @@ import { ThinkingState } from "./thinking-state";
 import { ToolChips, type ToolStepData } from "./tool-chips";
 import { ApprovalCard } from "./approval-card";
 import { MessageActions, FollowUps } from "./message-extras";
-import { PromptBar } from "./prompt-bar";
+import { Ai02Composer, type ModelOption } from "./ai02-composer";
 import { RichBlock, displayBlockOf } from "./blocks";
 
 const SUGGESTIONS = [
@@ -53,7 +54,15 @@ function short(v: unknown, n = 80): string {
 	return s.length > n ? `${s.slice(0, n)}…` : s;
 }
 
-export function AgentChat({ compact = false }: { compact?: boolean }) {
+export function AgentChat({
+	compact = false,
+	models,
+	activeModel,
+}: {
+	compact?: boolean;
+	models?: ModelOption[];
+	activeModel?: string | null;
+}) {
 	const { messages, sendMessage, status, regenerate, error } = useChat({
 		transport: new DefaultChatTransport({ api: "/agent" }),
 	});
@@ -61,6 +70,9 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const fileRef = useRef<HTMLInputElement>(null);
 	const [staged, setStaged] = useState<File[]>([]);
+	const modelFetcher = useFetcher();
+	const pickedModel =
+		(modelFetcher.formData?.get("model") as string | undefined) ?? activeModel ?? models?.[0]?.id ?? null;
 
 	const send = async (text: string) => {
 		const t = text.trim();
@@ -241,33 +253,30 @@ export function AgentChat({ compact = false }: { compact?: boolean }) {
 						))}
 					</div>
 				)}
-				<div className="flex items-end gap-2">
-					<input
-						ref={fileRef}
-						type="file"
-						accept="application/pdf"
-						multiple
-						className="hidden"
-						onChange={(e) => {
-							const picked = Array.from(e.target.files ?? []).filter((f) =>
-								/pdf/i.test(f.type) || /\.pdf$/i.test(f.name),
-							);
-							setStaged((s) => [...s, ...picked].slice(0, 10));
-							e.target.value = "";
-						}}
-					/>
-					<button
-						type="button"
-						aria-label="Attach PDF"
-						onClick={() => fileRef.current?.click()}
-						className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink-3 transition-colors hover:bg-hover hover:text-ink"
-					>
-						<Paperclip className="size-4" />
-					</button>
-					<div className="min-w-0 flex-1">
-						<PromptBar demo={false} placeholder="Ask the finance agent, or attach a PDF…" onSend={send} />
-					</div>
-				</div>
+				<input
+					ref={fileRef}
+					type="file"
+					accept="application/pdf"
+					multiple
+					className="hidden"
+					onChange={(e) => {
+						const picked = Array.from(e.target.files ?? []).filter(
+							(f) => /pdf/i.test(f.type) || /\.pdf$/i.test(f.name),
+						);
+						setStaged((s) => [...s, ...picked].slice(0, 10));
+						e.target.value = "";
+					}}
+				/>
+				<Ai02Composer
+					onSend={send}
+					onAttach={() => fileRef.current?.click()}
+					disabled={busy}
+					models={models}
+					activeModel={pickedModel}
+					onModelChange={(id) =>
+						modelFetcher.submit({ model: id }, { method: "post", action: "/dashboard/agent-model" })
+					}
+				/>
 			</div>
 		</div>
 	);

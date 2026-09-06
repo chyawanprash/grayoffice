@@ -36,41 +36,34 @@ export const navigationGroups: NavigationGroup[] = [
   {
     label: 'Overview',
     collapsible: false,
-    items: [{ name: 'Dashboard', href: '/', icon: Icons.HomeIcon }],
+    items: [
+      { name: 'Talk to Bhondu', href: '/assistant', icon: Icons.SparkleIcon },
+      { name: 'Dashboard', href: '/', icon: Icons.HomeIcon },
+    ],
   },
   {
     label: 'Finance',
     collapsible: true,
     items: [
+      { name: 'Invoices', href: '/invoices', icon: Icons.FileIcon },
       { name: 'Banking', href: '/banking', icon: Building2Icon },
       { name: 'Payments', href: '/integrations/payments', icon: CreditCardIcon },
-      { name: 'Close', href: '/close', icon: Icons.StackIcon },
-      { name: 'Reconciliation', href: '/reconciliation', icon: Icons.ArrowsCounterClockwiseIcon },
     ],
   },
   {
-    label: 'Insights',
+    label: 'Knowledge',
     collapsible: true,
     items: [
-      { name: 'Analytics', href: '/analytics', icon: Icons.ChartBarIcon },
-      { name: 'Reports', href: '/reports', icon: Icons.FileIcon },
-      { name: 'Audit room', href: '/audit', icon: Icons.ShieldCheckIcon },
-    ],
-  },
-  {
-    label: 'Assistant',
-    collapsible: true,
-    items: [
-      { name: 'AI Assistant', href: '/assistant', icon: Icons.SparkleIcon },
       { name: 'Knowledge base', href: '/knowledge', icon: BookOpenIcon },
       { name: 'Documents', href: '/documents', icon: Icons.FileArrowUpIcon },
     ],
   },
   {
-    label: 'Integrations',
+    label: 'Connections',
     collapsible: true,
     items: [
       { name: 'Integrations', href: '/integrations', icon: Icons.PlugsConnectedIcon },
+      { name: 'Audit room', href: '/audit', icon: Icons.ShieldCheckIcon },
     ],
   },
   {
