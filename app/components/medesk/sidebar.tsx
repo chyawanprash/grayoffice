@@ -45,6 +45,7 @@ import { navigationGroups, type NavigationItem } from './data'
 import { cn } from '~/lib/utils'
 
 type SidebarUser = { name: string | null; email: string }
+type SidebarOrg = { id: string; name: string }
 
 const menuButtonClassName = cn(
   'h-12.5 gap-2.5 rounded-lg bg-transparent py-2.5 pl-3 pr-2 text-base font-normal text-muted-foreground transition-colors',
@@ -91,11 +92,20 @@ function NavItem({ item }: { item: NavigationItem }) {
   )
 }
 
-export function DashboardSidebar({ user }: { user: SidebarUser }) {
+export function DashboardSidebar({
+  user,
+  org,
+  orgs = [],
+}: {
+  user: SidebarUser
+  org?: SidebarOrg
+  orgs?: SidebarOrg[]
+}) {
   const { resolvedTheme, setTheme } = useTheme()
   const { state, toggleSidebar } = useSidebar()
   const isDark = resolvedTheme === 'dark'
   const logout = useFetcher()
+  const switchOrg = useFetcher()
   const displayName = user.name ?? user.email
 
   return (
@@ -107,8 +117,15 @@ export function DashboardSidebar({ user }: { user: SidebarUser }) {
           className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-80 group-data-[collapsible=icon]:hidden"
         >
           <MedeskLogo className="size-7 shrink-0" />
-          <span className="truncate text-xl font-medium tracking-tight">
-            Gray Office
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-xl font-medium tracking-tight">
+              Gray Office
+            </span>
+            {org && (
+              <span className="truncate text-xs text-muted-foreground">
+                {org.name}
+              </span>
+            )}
           </span>
         </Link>
         <Button
@@ -209,6 +226,29 @@ export function DashboardSidebar({ user }: { user: SidebarUser }) {
                         </p>
                       </div>
                     </DropdownMenuLabel>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      render={<Link to="/dashboard/organization" />}
+                    >
+                      <span>Organization settings</span>
+                    </DropdownMenuItem>
+                    {orgs
+                      .filter((o) => o.id !== org?.id)
+                      .map((o) => (
+                        <DropdownMenuItem
+                          key={o.id}
+                          onClick={() =>
+                            switchOrg.submit(
+                              { orgId: o.id },
+                              { method: 'post', action: '/org/switch' },
+                            )
+                          }
+                        >
+                          <span>Switch to {o.name}</span>
+                        </DropdownMenuItem>
+                      ))}
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>

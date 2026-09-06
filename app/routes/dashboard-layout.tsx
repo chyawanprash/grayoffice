@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Outlet } from "react-router";
 import type { Route } from "./+types/dashboard-layout";
 import { getUser, logout, requireUserId } from "~/lib/auth.server";
+import { listOrgsForUser, requireOrg } from "~/lib/org.server";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { DashboardSidebar } from "~/components/medesk/sidebar";
 import { DashboardTopbar } from "~/components/medesk/topbar";
@@ -13,11 +14,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const userId = await requireUserId(request, SESSION_SECRET);
 	const user = await getUser(DB, userId);
 	if (!user) throw await logout(request, SESSION_SECRET);
-	return { user };
+	const { orgId, role } = await requireOrg(request, context.cloudflare.env);
+	const orgs = await listOrgsForUser(DB, userId);
+	const org = orgs.find((o) => o.id === orgId)!;
+	return { user, org, orgs, role };
 }
 
 export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
-	const { user } = loaderData;
+	const { user, org, orgs } = loaderData;
 	return (
 			<SidebarProvider
 				defaultOpen
@@ -29,7 +33,7 @@ export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
 					} as CSSProperties
 				}
 			>
-				<DashboardSidebar user={user} />
+				<DashboardSidebar user={user} org={org} orgs={orgs} />
 				<main className="flex flex-1 flex-col overflow-hidden bg-sidebar p-0 md:p-2 md:pl-0">
 					<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl">
 						<DashboardTopbar />

@@ -1,7 +1,7 @@
 /**
  * Inbound webhooks from the payment gateways, mounted at /api/payments.
  *
- *   POST /api/payments/webhook/:provider/:userId
+ *   POST /api/payments/webhook/:provider/:orgId
  *
  * The per-user URL is shown on /dashboard/integrations/<provider>. Each event is
  * signature-verified against that user's stored webhook secret, then written to
@@ -19,14 +19,14 @@ type Env = { DB: D1Database };
 
 export const paymentRoutes = new Hono<{ Bindings: Env }>();
 
-paymentRoutes.post("/webhook/:provider/:userId", async (c) => {
+paymentRoutes.post("/webhook/:provider/:orgId", async (c) => {
 	const provider = c.req.param("provider") as Provider;
-	const userId = c.req.param("userId");
+	const orgId = c.req.param("orgId");
 	if (!PROVIDER_IDS.includes(provider))
 		return c.json({ error: "unknown provider" }, 404);
 
 	const raw = await c.req.text();
-	const integ = await getIntegration(c.env.DB, userId, provider);
+	const integ = await getIntegration(c.env.DB, orgId, provider);
 	if (!integ?.webhook_secret)
 		return c.json({ error: "webhook not configured" }, 404);
 
@@ -39,11 +39,11 @@ paymentRoutes.post("/webhook/:provider/:userId", async (c) => {
 	if (!result) return c.json({ error: "bad signature" }, 401);
 
 	await c.env.DB.prepare(
-		"INSERT INTO payment_events (id, user_id, provider, type, summary, payload) VALUES (?, ?, ?, ?, ?, ?)",
+		"INSERT INTO payment_events (id, org_id, provider, type, summary, payload) VALUES (?, ?, ?, ?, ?, ?)",
 	)
 		.bind(
 			crypto.randomUUID(),
-			userId,
+			orgId,
 			provider,
 			result.type,
 			result.summary,

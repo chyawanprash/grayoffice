@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/dashboard.integrations.payments";
-import { requireUserId } from "~/lib/auth.server";
 import { Button } from "~/components/ui/button";
+import { requireOrg } from "~/lib/org.server";
 import { PROVIDER_APIS, PROVIDER_IDS, listIntegrations } from "~/lib/payments.server";
 
 export function meta() {
@@ -9,9 +9,8 @@ export function meta() {
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
-	const { DB, SESSION_SECRET } = context.cloudflare.env;
-	const userId = await requireUserId(request, SESSION_SECRET);
-	const connected = await listIntegrations(DB, userId);
+	const { orgId } = await requireOrg(request, context.cloudflare.env);
+	const connected = await listIntegrations(context.cloudflare.env.DB, orgId);
 	return {
 		providers: PROVIDER_IDS.map((id) => ({
 			id,

@@ -39,6 +39,50 @@ export async function sendEmail(
 	}
 }
 
+export async function sendInviteEmail(
+	env: MailEnv,
+	to: string,
+	orgName: string,
+	inviterName: string,
+	acceptUrl: string,
+): Promise<void> {
+	await sendEmail(env, {
+		to,
+		subject: `${inviterName} invited you to ${orgName} on Gray Office`,
+		html: renderHtml(
+			<html>
+				<body style={{ fontFamily: "system-ui, sans-serif", color: "#1a1a1a" }}>
+					<p>
+						{inviterName} has invited you to join <strong>{orgName}</strong> on
+						Gray Office, the finance operations workspace.
+					</p>
+					<p>
+						<a
+							href={acceptUrl}
+							style={{
+								display: "inline-block",
+								padding: "10px 18px",
+								background: "#4f46e5",
+								color: "#fff",
+								borderRadius: 8,
+								textDecoration: "none",
+							}}
+						>
+							Accept invitation
+						</a>
+					</p>
+					<p style={{ color: "#666", fontSize: 13 }}>
+						Or open this link: {acceptUrl}
+						<br />
+						This invitation expires in 7 days.
+					</p>
+				</body>
+			</html>,
+		),
+		text: `${inviterName} invited you to join ${orgName} on Gray Office. Accept: ${acceptUrl} (expires in 7 days)`,
+	});
+}
+
 export async function sendOtpEmail(
 	env: MailEnv,
 	to: string,

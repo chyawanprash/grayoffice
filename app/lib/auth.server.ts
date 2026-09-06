@@ -185,6 +185,61 @@ export async function getUserId(
 	return typeof userId === "string" ? userId : null;
 }
 
+/* ------------------------------------------------------------- active org */
+
+/** The org the user is currently working in (see org.server.ts). */
+export async function getActiveOrgId(
+	request: Request,
+	secret: string,
+): Promise<string | null> {
+	const { getSession } = storage(secret);
+	const session = await getSession(request.headers.get("Cookie"));
+	const orgId = session.get("activeOrgId");
+	return typeof orgId === "string" ? orgId : null;
+}
+
+/** Set the active org on the existing session and redirect. */
+export async function commitActiveOrg(
+	request: Request,
+	secret: string,
+	orgId: string,
+	redirectTo: string,
+) {
+	const { getSession, commitSession } = storage(secret);
+	const session = await getSession(request.headers.get("Cookie"));
+	session.set("activeOrgId", orgId);
+	return redirect(redirectTo, {
+		headers: { "Set-Cookie": await commitSession(session) },
+	});
+}
+
+/* --------------------------------------------------------- pending invite */
+
+/** Park an invite token on the session so it survives the sign-in detour. */
+export async function stashPendingInvite(
+	request: Request,
+	secret: string,
+	token: string,
+	redirectTo: string,
+) {
+	const { getSession, commitSession } = storage(secret);
+	const session = await getSession(request.headers.get("Cookie"));
+	session.set("pendingInviteToken", token);
+	return redirect(redirectTo, {
+		headers: { "Set-Cookie": await commitSession(session) },
+	});
+}
+
+export async function getPendingInvite(
+	request: Request,
+	secret: string,
+): Promise<string | null> {
+	const { getSession } = storage(secret);
+	const session = await getSession(request.headers.get("Cookie"));
+	const t = session.get("pendingInviteToken");
+	return typeof t === "string" ? t : null;
+}
+
 export async function requireUserId(
 	request: Request,
 	secret: string,

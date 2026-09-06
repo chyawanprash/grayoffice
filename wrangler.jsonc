@@ -12,7 +12,8 @@
 	// GOOGLE_CLIENT_SECRET, RESEND_API_KEY) are set with `wrangler secret put`.
 	"vars": {
 		"APP_URL": "https://grayoffice.app",
-		"RESEND_FROM": "Gray Office <login@grayoffice.app>"
+		"RESEND_FROM": "Gray Office <login@grayoffice.app>",
+		"BANK_URL": "https://bank.grayoffice.app"
 	},
 	"ai": {
 		"binding": "AI",
@@ -37,6 +38,10 @@
 			{
 				"queue": "brand-visibility-jobs",
 				"binding": "BRAND_VISIBILITY_QUEUE"
+			},
+			{
+				"queue": "kb-ingest-jobs",
+				"binding": "KB_QUEUE"
 			}
 		],
 		"consumers": [
@@ -44,6 +49,12 @@
 				"queue": "brand-visibility-jobs",
 				"max_batch_size": 5,
 				"max_concurrency": 10
+			},
+			{
+				"queue": "kb-ingest-jobs",
+				"max_batch_size": 3,
+				"max_concurrency": 4,
+				"max_retries": 2
 			}
 		]
 	}

@@ -5,6 +5,7 @@
  */
 import type { Route } from "./+types/settings.data";
 import { findUserById, requireUserId } from "~/lib/auth.server";
+import { listOrgsForUser } from "~/lib/org.server";
 import { countRecoveryCodes } from "~/lib/mfa.server";
 
 const ts = (v: number | null | undefined) =>
@@ -43,14 +44,16 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	let paymentIntegrations: unknown[] = [];
 	let paymentEvents: unknown[] = [];
 	try {
+		const orgIds = (await listOrgsForUser(DB, userId)).map((o) => o.id);
+		const orgPlaceholders = orgIds.map(() => "?").join(",") || "''";
 		const pi = await DB.prepare(
-			`SELECT provider, mode, connected_at, updated_at,
+			`SELECT org_id, provider, mode, connected_at, updated_at,
 			        (api_key IS NOT NULL) AS has_api_key,
 			        (api_secret IS NOT NULL) AS has_api_secret,
 			        (webhook_secret IS NOT NULL) AS has_webhook_secret, extra
-			 FROM payment_integrations WHERE user_id = ?`,
+			 FROM payment_integrations WHERE org_id IN (${orgPlaceholders})`,
 		)
-			.bind(userId)
+			.bind(...orgIds)
 			.all();
 		paymentIntegrations = (pi.results ?? []).map((r) => {
 			const row = r as Record<string, unknown>;
@@ -70,9 +73,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 		const pe = await DB.prepare(
 			`SELECT provider, type, summary, created_at
-			 FROM payment_events WHERE user_id = ? ORDER BY created_at DESC LIMIT 500`,
+			 FROM payment_events WHERE org_id IN (${orgPlaceholders}) ORDER BY created_at DESC LIMIT 500`,
 		)
-			.bind(userId)
+			.bind(...orgIds)
 			.all();
 		paymentEvents = (pe.results ?? []).map((r) => {
 			const row = r as Record<string, unknown>;

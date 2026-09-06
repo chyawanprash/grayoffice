@@ -5,6 +5,7 @@ import { botRoutes } from "./bots";
 import { paymentRoutes } from "./payments";
 import { pdfToJson } from "./bot-router";
 import { queueConsumer } from "./queue";
+import { kbQueueConsumer, type KbJob } from "./kb-queue";
 
 const app = new Hono<{ Bindings: Env & { TARGET_DOMAIN?: string } }>();
 
@@ -42,5 +43,9 @@ app.all("*", (c) => {
 
 export default {
 	fetch: app.fetch,
-	queue: queueConsumer,
+	queue(batch: MessageBatch, env: Env) {
+		if (batch.queue === "kb-ingest-jobs")
+			return kbQueueConsumer(batch as MessageBatch<KbJob>, env);
+		return queueConsumer(batch as Parameters<typeof queueConsumer>[0], env);
+	},
 };

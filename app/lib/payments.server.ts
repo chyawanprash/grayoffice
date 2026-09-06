@@ -5,7 +5,7 @@
  *
  * The user connects a gateway on /dashboard/integrations/<provider>, picks which
  * resources to pull (see `PROVIDER_APIS[provider].resources`), and the app
- * fetches them live. Webhooks land at /api/payments/webhook/<provider>/<userId>.
+ * fetches them live. Webhooks land at /api/payments/webhook/<provider>/<orgId>.
  */
 
 export type Provider =
@@ -238,11 +238,11 @@ type Row = {
 
 export async function listIntegrations(
 	db: D1Database,
-	userId: string,
+	orgId: string,
 ): Promise<Record<string, Integration>> {
 	const { results } = await db
-		.prepare("SELECT * FROM payment_integrations WHERE user_id = ?")
-		.bind(userId)
+		.prepare("SELECT * FROM payment_integrations WHERE org_id = ?")
+		.bind(orgId)
 		.all<Row>();
 	const out: Record<string, Integration> = {};
 	for (const r of results ?? []) out[r.provider] = hydrate(r);
@@ -251,14 +251,14 @@ export async function listIntegrations(
 
 export async function getIntegration(
 	db: D1Database,
-	userId: string,
+	orgId: string,
 	provider: Provider,
 ): Promise<Integration | null> {
 	const r = await db
 		.prepare(
-			"SELECT * FROM payment_integrations WHERE user_id = ? AND provider = ?",
+			"SELECT * FROM payment_integrations WHERE org_id = ? AND provider = ?",
 		)
-		.bind(userId, provider)
+		.bind(orgId, provider)
 		.first<Row>();
 	return r ? hydrate(r) : null;
 }
@@ -288,7 +288,7 @@ function hydrate(r: Row): Integration {
 
 export async function saveIntegration(
 	db: D1Database,
-	userId: string,
+	orgId: string,
 	provider: Provider,
 	input: {
 		mode: Mode;
@@ -305,9 +305,9 @@ export async function saveIntegration(
 	await db
 		.prepare(
 			`INSERT INTO payment_integrations
-			   (user_id, provider, mode, api_key, api_secret, webhook_secret, extra, connected_at, updated_at)
+			   (org_id, provider, mode, api_key, api_secret, webhook_secret, extra, connected_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
-			 ON CONFLICT(user_id, provider) DO UPDATE SET
+			 ON CONFLICT(org_id, provider) DO UPDATE SET
 			   mode = excluded.mode,
 			   api_key = COALESCE(excluded.api_key, payment_integrations.api_key),
 			   api_secret = COALESCE(excluded.api_secret, payment_integrations.api_secret),
@@ -316,7 +316,7 @@ export async function saveIntegration(
 			   updated_at = unixepoch()`,
 		)
 		.bind(
-			userId,
+			orgId,
 			provider,
 			input.mode,
 			input.api_key || null,
@@ -329,20 +329,20 @@ export async function saveIntegration(
 
 export async function deleteIntegration(
 	db: D1Database,
-	userId: string,
+	orgId: string,
 	provider: Provider,
 ): Promise<void> {
 	await db
 		.prepare(
-			"DELETE FROM payment_integrations WHERE user_id = ? AND provider = ?",
+			"DELETE FROM payment_integrations WHERE org_id = ? AND provider = ?",
 		)
-		.bind(userId, provider)
+		.bind(orgId, provider)
 		.run();
 }
 
 export async function recentEvents(
 	db: D1Database,
-	userId: string,
+	orgId: string,
 	provider: Provider,
 	limit = 10,
 ): Promise<
@@ -350,9 +350,9 @@ export async function recentEvents(
 > {
 	const { results } = await db
 		.prepare(
-			"SELECT id, type, summary, created_at FROM payment_events WHERE user_id = ? AND provider = ? ORDER BY created_at DESC LIMIT ?",
+			"SELECT id, type, summary, created_at FROM payment_events WHERE org_id = ? AND provider = ? ORDER BY created_at DESC LIMIT ?",
 		)
-		.bind(userId, provider, limit)
+		.bind(orgId, provider, limit)
 		.all<{ id: string; type: string | null; summary: string | null; created_at: number }>();
 	return results ?? [];
 }

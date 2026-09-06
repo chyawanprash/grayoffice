@@ -17,10 +17,17 @@ export default [
 	route("logout", "routes/logout.tsx"),
 	route("agent", "routes/api.agent.tsx"),
 	route("settings/data", "routes/settings.data.tsx"),
+	route("onboarding", "routes/onboarding.tsx"),
+	route("onboarding/invite", "routes/onboarding.invite.tsx"),
+	route("invite/:token", "routes/invite.$token.tsx"),
+	route("org/switch", "routes/org.switch.tsx"),
 	layout("routes/dashboard-layout.tsx", [
 		route("dashboard", "routes/dashboard.tsx"),
 		route("dashboard/assistant", "routes/dashboard.assistant.tsx"),
 		route("dashboard/audit", "routes/dashboard.audit.tsx"),
+		route("dashboard/organization", "routes/dashboard.organization.tsx"),
+		route("dashboard/banking", "routes/dashboard.banking.tsx"),
+		route("dashboard/knowledge", "routes/dashboard.knowledge.tsx"),
 		route("dashboard/integrations", "routes/dashboard.integrations.tsx"),
 		route(
 			"dashboard/integrations/payments",

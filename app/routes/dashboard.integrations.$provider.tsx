@@ -2,7 +2,7 @@ import { Form, Link, redirect, useNavigation } from "react-router";
 import { ArrowLeft, CheckCircle2, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import type { Route } from "./+types/dashboard.integrations.$provider";
-import { requireUserId } from "~/lib/auth.server";
+import { requireOrg } from "~/lib/org.server";
 import { Button } from "~/components/ui/button";
 import {
 	PROVIDER_APIS,
@@ -24,14 +24,14 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
-	const { DB, SESSION_SECRET, APP_URL } = context.cloudflare.env;
-	const userId = await requireUserId(request, SESSION_SECRET);
+	const { DB, APP_URL } = context.cloudflare.env;
+	const { orgId } = await requireOrg(request, context.cloudflare.env);
 	if (!isProvider(params.provider))
 		throw redirect("/dashboard/integrations/payments");
 
 	const provider = params.provider;
 	const meta = PROVIDER_APIS[provider];
-	const integration = await getIntegration(DB, userId, provider);
+	const integration = await getIntegration(DB, orgId, provider);
 	const connected = Boolean(integration?.api_key);
 	const selected = new Set(integration?.resources ?? []);
 
@@ -54,7 +54,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		);
 	}
 	const events = connected
-		? await recentEvents(DB, userId, provider)
+		? await recentEvents(DB, orgId, provider)
 		: [];
 
 	const base = (APP_URL ?? new URL(request.url).origin).replace(/\/$/, "");
@@ -75,15 +75,15 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		hasWebhookSecret: Boolean(integration?.webhook_secret),
 		extra: integration?.extra ?? {},
 		selected: [...selected],
-		webhookUrl: `${base}/api/payments/webhook/${provider}/${userId}`,
+		webhookUrl: `${base}/api/payments/webhook/${provider}/${orgId}`,
 		data,
 		events,
 	};
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
-	const { DB, SESSION_SECRET } = context.cloudflare.env;
-	const userId = await requireUserId(request, SESSION_SECRET);
+	const { DB } = context.cloudflare.env;
+	const { orgId } = await requireOrg(request, context.cloudflare.env);
 	if (!isProvider(params.provider))
 		throw redirect("/dashboard/integrations/payments");
 	const provider = params.provider;
@@ -91,7 +91,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 	const intent = String(form.get("intent") ?? "");
 
 	if (intent === "disconnect") {
-		await deleteIntegration(DB, userId, provider);
+		await deleteIntegration(DB, orgId, provider);
 		return { ok: "disconnected" as const };
 	}
 
@@ -107,7 +107,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 			} else if (f.key === "api_key") apiKey = v || undefined;
 			else if (f.key === "api_secret") apiSecret = v || undefined;
 		}
-		const existing = await getIntegration(DB, userId, provider);
+		const existing = await getIntegration(DB, orgId, provider);
 		if (!apiKey && !existing?.api_key)
 			return { error: `${meta.fields[0].label} is required.` };
 
@@ -117,7 +117,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 			.map(String)
 			.filter((k) => validKeys.has(k));
 
-		await saveIntegration(DB, userId, provider, {
+		await saveIntegration(DB, orgId, provider, {
 			mode: form.get("mode") === "live" ? "live" : "test",
 			api_key: apiKey,
 			api_secret: apiSecret,

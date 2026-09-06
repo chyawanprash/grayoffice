@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from 'react'
 import {
   BedIcon,
+  BookOpenIcon,
   Building2Icon,
   CreditCardIcon,
   FlaskConicalIcon,
@@ -38,13 +39,13 @@ export const navigationGroups: NavigationGroup[] = [
     items: [{ name: 'Dashboard', href: '/', icon: Icons.HomeIcon }],
   },
   {
-    label: 'Operations',
+    label: 'Finance',
     collapsible: true,
     items: [
-      { name: 'Appointment', href: '/appointment', icon: Icons.CalendarCheckIcon },
-      { name: 'Staff', href: '/staff', icon: Icons.IdentificationBadgeIcon },
-      { name: 'Departments', href: '/departments', icon: Icons.HospitalIcon },
-      { name: 'Resources', href: '/resources', icon: Icons.StackIcon },
+      { name: 'Banking', href: '/banking', icon: Building2Icon },
+      { name: 'Payments', href: '/integrations/payments', icon: CreditCardIcon },
+      { name: 'Close', href: '/close', icon: Icons.StackIcon },
+      { name: 'Reconciliation', href: '/reconciliation', icon: Icons.ArrowsCounterClockwiseIcon },
     ],
   },
   {
@@ -53,7 +54,6 @@ export const navigationGroups: NavigationGroup[] = [
     items: [
       { name: 'Analytics', href: '/analytics', icon: Icons.ChartBarIcon },
       { name: 'Reports', href: '/reports', icon: Icons.FileIcon },
-      { name: 'Trends', href: '/trends', icon: Icons.TrendUpIcon },
       { name: 'Audit room', href: '/audit', icon: Icons.ShieldCheckIcon },
     ],
   },
@@ -62,7 +62,7 @@ export const navigationGroups: NavigationGroup[] = [
     collapsible: true,
     items: [
       { name: 'AI Assistant', href: '/assistant', icon: Icons.SparkleIcon },
-      { name: 'Smart Queries', href: '/smart-queries', icon: Icons.SpinnerIcon },
+      { name: 'Knowledge base', href: '/knowledge', icon: BookOpenIcon },
     ],
   },
   {
@@ -70,15 +70,14 @@ export const navigationGroups: NavigationGroup[] = [
     collapsible: true,
     items: [
       { name: 'Integrations', href: '/integrations', icon: Icons.PlugsConnectedIcon },
-      { name: 'Payments', href: '/integrations/payments', icon: CreditCardIcon },
     ],
   },
   {
     label: 'Admin',
     collapsible: true,
     items: [
+      { name: 'Organization', href: '/organization', icon: Icons.IdentificationBadgeIcon },
       { name: 'Settings', href: '/settings', icon: Icons.GearIcon },
-      { name: 'Permissions', href: '/permissions', icon: Icons.ShieldCheckIcon },
     ],
   },
 ]
