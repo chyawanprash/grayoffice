@@ -104,7 +104,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	};
 }
 
-const statCard = "rounded-xl bg-card p-4";
+const statCard = "dash-card p-4";
 
 function typeColor(r: { group: string; inflow: number }): TagColor {
 	if (r.group === "sale") return "green";

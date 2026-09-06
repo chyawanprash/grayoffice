@@ -144,7 +144,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	return { error: "Unknown request." };
 }
 
-const cardClass = "rounded-xl bg-card p-4 text-card-foreground";
+const cardClass = "dash-card p-4 text-card-foreground";
 const cardTitleClass = "text-lg leading-6 font-medium text-foreground";
 const fieldClass =
 	"h-9 rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30";

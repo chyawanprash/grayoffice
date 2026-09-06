@@ -62,7 +62,7 @@ export default function Inventory({ loaderData }: Route.ComponentProps) {
 				</div>
 			</div>
 
-			<section className="mb-5 rounded-xl bg-card p-4">
+			<section className="mb-5 dash-card p-4">
 				<div className="flex items-baseline justify-between">
 					<span className="text-xs uppercase tracking-wide text-muted-foreground">Total {year}</span>
 					<span className="text-2xl font-semibold tabular-nums text-foreground">{inr(grandTotal)}</span>
@@ -87,7 +87,7 @@ export default function Inventory({ loaderData }: Route.ComponentProps) {
 						<Link
 							key={c.category}
 							to={`/dashboard/inventory/${c.category}?year=${year}`}
-							className="group rounded-xl bg-card p-4 transition-colors hover:bg-muted/50"
+							className="group dash-card p-4 transition-colors hover:bg-muted/30"
 						>
 							<div className="flex items-center justify-between">
 								<span className="text-sm font-medium capitalize text-foreground">{c.category}</span>

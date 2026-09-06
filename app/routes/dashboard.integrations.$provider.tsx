@@ -133,7 +133,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 const fieldClass =
 	"h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30";
-const cardClass = "rounded-xl border border-border bg-card p-4 text-card-foreground";
+const cardClass = "dash-card p-4 text-card-foreground";
 
 function CopyField({ value }: { value: string }) {
 	const [copied, setCopied] = useState(false);

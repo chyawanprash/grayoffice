@@ -86,7 +86,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	return { error: "Unknown action." };
 }
 
-const card = "rounded-xl bg-card p-4 text-card-foreground";
+const card = "dash-card p-4 text-card-foreground";
 
 export default function Organization({ loaderData, actionData }: Route.ComponentProps) {
 	const { org, role, members, invites, models, profile } = loaderData;

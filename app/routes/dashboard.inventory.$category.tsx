@@ -233,7 +233,7 @@ export default function InventoryCategory({ loaderData, actionData }: Route.Comp
 			</section>
 
 			{/* ── Add item ── */}
-			<section ref={addRef} className="mt-6 rounded-xl border border-border bg-card p-4">
+			<section ref={addRef} className="mt-6 dash-card p-4">
 				<h2 className="mb-3 text-sm font-medium text-foreground">Add a {category} item</h2>
 				<Form method="post" className="grid gap-3 sm:grid-cols-2">
 					<Field label="Name" className="sm:col-span-2">

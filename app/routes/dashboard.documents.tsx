@@ -126,7 +126,7 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 				</p>
 			)}
 
-			<section className="rounded-xl border border-border bg-card p-4">
+			<section className="dash-card p-4">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
 						<input

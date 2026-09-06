@@ -31,7 +31,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	return { orgName: org.name, currency: org.currency, period, cash, recent, close, analytics, jurisdiction };
 }
 
-const card = "rounded-xl bg-card p-4 text-card-foreground";
+const card = "dash-card p-4 text-card-foreground";
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
 	const { orgName, currency, period, cash, recent, close, analytics, jurisdiction } = loaderData;

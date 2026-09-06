@@ -115,7 +115,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	}
 }
 
-const card = "rounded-xl border border-border bg-card p-4";
+const card = "dash-card p-4";
 const field =
 	"h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring";
 export default function Banking({ loaderData, actionData }: Route.ComponentProps) {

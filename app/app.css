@@ -5,6 +5,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Dashboard card: a hairline border, a thin inset band, then an inner hairline
+ * — the "border within a border" frame from the marketing footer. */
+@utility dash-card {
+	border-radius: 0.75rem;
+	background-color: var(--card);
+	box-shadow:
+		0 0 0 1px var(--border),
+		inset 0 0 0 4px color-mix(in oklch, var(--border) 20%, var(--card)),
+		inset 0 0 0 5px color-mix(in oklch, var(--border) 55%, transparent);
+}
+
 @theme {
 	/* Kumo tokens from stratus */
 	--color-canvas: #fafafa;
