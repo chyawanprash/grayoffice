@@ -38,6 +38,7 @@ import { Button } from '~/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -416,7 +417,9 @@ function AppointmentsTableCard({
                 Filter
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Status</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Status</DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup
                   value={statusFilter}
