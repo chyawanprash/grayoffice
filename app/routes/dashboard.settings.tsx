@@ -22,6 +22,7 @@ import {
 	verifyPassword,
 } from "~/lib/auth.server";
 import { countRecoveryCodes, regenerateRecoveryCodes } from "~/lib/mfa.server";
+import { requireOrg, setDummyData } from "~/lib/org.server";
 import { forget } from "~/lib/pinecone.server";
 import { newTotpSecret, totpQrSvg, totpUri, verifyTotp } from "~/lib/totp.server";
 
@@ -34,6 +35,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const userId = await requireUserId(request, SESSION_SECRET);
 	const user = await findUserById(DB, userId);
 	if (!user) throw new Response("Not found", { status: 404 });
+	const { org, role } = await requireOrg(request, context.cloudflare.env);
 	const meta = await DB.prepare(
 		"SELECT created_at FROM users WHERE id = ?",
 	)
@@ -50,6 +52,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		totpEnabled: Boolean(user.totp_enabled),
 		createdAt: meta?.created_at ?? null,
 		recoveryCount: await countRecoveryCodes(DB, userId),
+		orgName: org.name,
+		canManageOrg: role !== "member",
+		dummyData: Boolean(org.dummy_data),
 		enroll:
 			enrolling && user.totp_secret
 				? {
@@ -69,6 +74,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 	const form = await request.formData();
 	const intent = String(form.get("intent") ?? "");
+
+	if (intent === "toggle-dummy") {
+		const { orgId, role } = await requireOrg(request, context.cloudflare.env);
+		if (role === "member") return { error: "Only an owner or admin can change this." };
+		await setDummyData(DB, orgId, form.get("on") === "1");
+		return { ok: "dummy" as const };
+	}
 
 	if (intent === "update-name") {
 		const name = String(form.get("name") ?? "").trim();

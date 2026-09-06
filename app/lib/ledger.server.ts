@@ -264,6 +264,10 @@ export async function createInvoice(env: Env, orgId: string, input: CreateInvoic
 					],
 	});
 
+	// Feed non-PDF invoices into the KB + memory graph in the background. Ones
+	// created from a document already have the PDF going through KB ingest.
+	if (input.source !== "document") await queueInvoiceKb(env, orgId, id);
+
 	return {
 		id,
 		number,
