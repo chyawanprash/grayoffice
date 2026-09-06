@@ -233,20 +233,28 @@ export function rollPalette(el: HTMLElement) {
 		document.documentElement.classList.contains("dark");
 
 	const s = el.style;
-	s.setProperty("--ai-c1", hsl(at(0), 96, 48));
-	s.setProperty("--ai-c2", hsl(at(0.18), 52, 80));
-	s.setProperty("--ai-c3", hsl(at(0.4), 98, 55));
-	s.setProperty("--ai-c4", hsl(at(0.66), 96, 52));
-	s.setProperty("--ai-c5", hsl(at(0.88), 94, 50));
-	s.setProperty("--ai-c6", hsl(at(1), 90, 72, 0.8));
-	s.setProperty("--ai-tail", hsl(at(-0.12), 70, 76, 0.63));
-	// Card face: near-white tints in light mode; deep near-black tints in dark so
-	// it sits seamlessly on the dark page.
+	// Light mode: a vivid spectral sweep. Dark mode: the same motion but a
+	// low-saturation grey shimmer, so it never blows out to a white glare
+	// against the near-black card face.
 	if (dark) {
-		s.setProperty("--ai-bg1", hsl(at(0), 20, 9));
-		s.setProperty("--ai-bg2", hsl(at(0.5), 16, 8));
-		s.setProperty("--ai-bg3", hsl(at(1), 18, 7));
+		s.setProperty("--ai-c1", hsl(at(0), 6, 46));
+		s.setProperty("--ai-c2", hsl(at(0.18), 5, 56));
+		s.setProperty("--ai-c3", hsl(at(0.4), 6, 50));
+		s.setProperty("--ai-c4", hsl(at(0.66), 6, 46));
+		s.setProperty("--ai-c5", hsl(at(0.88), 5, 44));
+		s.setProperty("--ai-c6", hsl(at(1), 4, 38, 0.7));
+		s.setProperty("--ai-tail", hsl(at(-0.12), 4, 40, 0.5));
+		s.setProperty("--ai-bg1", hsl(at(0), 8, 8));
+		s.setProperty("--ai-bg2", hsl(at(0.5), 6, 7));
+		s.setProperty("--ai-bg3", hsl(at(1), 7, 6));
 	} else {
+		s.setProperty("--ai-c1", hsl(at(0), 96, 48));
+		s.setProperty("--ai-c2", hsl(at(0.18), 52, 80));
+		s.setProperty("--ai-c3", hsl(at(0.4), 98, 55));
+		s.setProperty("--ai-c4", hsl(at(0.66), 96, 52));
+		s.setProperty("--ai-c5", hsl(at(0.88), 94, 50));
+		s.setProperty("--ai-c6", hsl(at(1), 90, 72, 0.8));
+		s.setProperty("--ai-tail", hsl(at(-0.12), 70, 76, 0.63));
 		s.setProperty("--ai-bg1", hsl(at(0), 30, 95));
 		s.setProperty("--ai-bg2", hsl(at(0.5), 24, 93));
 		s.setProperty("--ai-bg3", hsl(at(1), 26, 91));

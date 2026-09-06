@@ -108,6 +108,28 @@ export function useTheme() {
 }
 
 /**
+ * Live `.dark` state read straight off <html>. The theme init script stamps the
+ * class before hydration, so this is correct on the first client paint - unlike
+ * `useTheme().resolvedTheme`, which is SSR-seeded to "light" and left visual
+ * components rendering their light variant in dark mode.
+ *
+ * Returns `null` until mounted (SSR / first paint); callers that render theme-
+ * dependent visuals should treat `null` as "not yet known".
+ */
+export function useIsDark(): boolean | null {
+	const [dark, setDark] = useState<boolean | null>(null);
+	useEffect(() => {
+		const el = document.documentElement;
+		const sync = () => setDark(el.classList.contains("dark"));
+		sync();
+		const mo = new MutationObserver(sync);
+		mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+		return () => mo.disconnect();
+	}, []);
+	return dark;
+}
+
+/**
  * Icon button that flips light <-> dark. Drop it into any header / nav.
  * `cycle` also exposes "system" as a third state.
  */

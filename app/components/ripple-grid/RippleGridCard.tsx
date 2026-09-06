@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { RippleGrid } from "./engine";
-import { useTheme } from "~/components/theme";
+import { useIsDark } from "~/components/theme";
 
 // Blob / field colors per theme - the field matches the section the card sits in
 // so the card reads as seamless.
@@ -11,8 +11,7 @@ const THEME_COLORS = {
 
 export function RippleGridCard({ className = "" }: { className?: string } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { resolvedTheme } = useTheme();
-  const colors = THEME_COLORS[resolvedTheme];
+  const colors = THEME_COLORS[useIsDark() ? "dark" : "light"];
 
   useEffect(() => {
     const canvas = canvasRef.current;

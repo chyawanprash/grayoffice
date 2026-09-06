@@ -4,17 +4,17 @@
  * highlight. Scoped entirely by the surrounding face's background colour.
  */
 export function Surface({ dark }: { dark: boolean }) {
+	// Dark mode: no top bloom, no bright hairline - the face stays a flat dark
+	// grey. The soft-light stack is a light-mode-only effect.
+	if (dark) return null;
 	return (
 		<span
 			aria-hidden="true"
 			className="pointer-events-none absolute inset-0"
 			style={{
-				background: dark
-					? "radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.06), transparent 60%)"
-					: "radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.85), transparent 55%)",
-				boxShadow: dark
-					? "inset 0 1px 0 rgba(255,255,255,0.06)"
-					: "inset 0 1px 0 rgba(255,255,255,0.9)",
+				background:
+					"radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.85), transparent 55%)",
+				boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
 			}}
 		/>
 	);

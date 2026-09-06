@@ -1,8 +1,39 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type ComponentProps } from "react";
+import { Link, useNavigation } from "react-router";
 import { GithubLogo, LinkedinLogo, XLogo } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
 import { ThemeToggle } from "~/components/theme";
+
+/**
+ * A Button that links somewhere and shows a minimal spinner while React Router
+ * is navigating to that route (e.g. "Get started" -> /sign-up).
+ */
+export function CTAButton({
+	to,
+	children,
+	...props
+}: { to: string; children: React.ReactNode } & Omit<
+	ComponentProps<typeof Button>,
+	"render" | "children"
+>) {
+	const nav = useNavigation();
+	const pending = nav.state === "loading" && nav.location?.pathname === to;
+	return (
+		<Button render={<Link to={to} />} aria-busy={pending} {...props}>
+			{pending ? (
+				<>
+					<span
+						aria-hidden
+						className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+					/>
+					<span>Loading…</span>
+				</>
+			) : (
+				children
+			)}
+		</Button>
+	);
+}
 
 export function Logo({ className = "" }: { className?: string }) {
 	return (
@@ -39,9 +70,15 @@ function useActiveSection(ids: string[]) {
 				const next = visible[0]?.target.id;
 				if (next) {
 					setActive(next);
-					const hash = `#${next}`;
+					// Don't stamp a hash for the hero (first section) - otherwise a
+					// reload jumps the page down to it, under the sticky navbar.
+					const hash = next === ids[0] ? "" : `#${next}`;
 					if (window.location.hash !== hash) {
-						window.history.replaceState(null, "", hash);
+						window.history.replaceState(
+							null,
+							"",
+							hash || window.location.pathname + window.location.search,
+						);
 					}
 				}
 			},
@@ -87,9 +124,9 @@ export function SiteNav() {
 					>
 						Sign in
 					</Button>
-					<Button render={<Link to="/sign-up" />} size="md">
+					<CTAButton to="/sign-up" size="md">
 						Get started
-					</Button>
+					</CTAButton>
 				</div>
 			</div>
 		</header>

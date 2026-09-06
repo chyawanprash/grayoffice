@@ -38,6 +38,11 @@ body {
 	line-height: 1.43;
 }
 
+/* keep hash-linked sections clear of the sticky marketing navbar (4.5rem) */
+html {
+	scroll-padding-top: 5.5rem;
+}
+
 /*
  * Dark theme. The `.dark` class is set on <html> before first paint by
  * THEME_INIT_SCRIPT and kept in sync by the ThemeProvider. We remap both the
@@ -253,6 +258,15 @@ body::before {
 	--ai-bg2: #0e0e10;
 	--ai-bg3: #0d0d0f;
 	--border-line: #2a2a2e;
+	/* grey sweep in dark mode (rollPalette also sets these inline) - never a
+	   white/colour glare against the near-black face */
+	--ai-c1: #6b6b70;
+	--ai-c2: #85858c;
+	--ai-c3: #74747a;
+	--ai-c4: #6b6b70;
+	--ai-c5: #636368;
+	--ai-c6: rgba(120, 120, 128, 0.7);
+	--ai-tail: rgba(110, 110, 118, 0.5);
 	--s-surface-2: #1e1e1e;
 	--s-surface-1: #262629;
 	--s-border-1: #33333a;

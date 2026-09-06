@@ -1,6 +1,6 @@
 import { Form, Link, redirect, useNavigation } from "react-router";
-import { GoogleLogo } from "@phosphor-icons/react";
 import { AuthShell } from "~/components/auth-shell";
+import { GoogleIcon } from "~/components/brand-icons";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/auth";
 import {
@@ -103,7 +103,7 @@ export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
 								href="/auth/google"
 								className="mt-6 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-surface text-sm font-medium text-neutral-800 transition-colors hover:bg-tint"
 							>
-								<GoogleLogo size={17} weight="bold" />{" "}
+								<GoogleIcon className="size-[17px]" />{" "}
 								{signup ? "Sign up with Google" : "Continue with Google"}
 							</a>
 							<div className="my-4 flex items-center gap-3 text-xs text-neutral-400">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTheme } from "~/components/theme";
+import { useIsDark } from "~/components/theme";
 import { DARK_KEYS, VARIANTS, radiusFor, useVariantSizes } from "./variants";
 import { RimGlow } from "./RimGlow";
 import { Surface } from "./Surface";
@@ -14,7 +14,9 @@ const GAP_MS =
 	HANDOVER_AT - PULSE_MS + FADE_OUT_MS + MORPH_MS + 80 + SETTLED_MS;
 
 export function AiLightsCard() {
-	const isDark = useTheme().resolvedTheme === "dark";
+	// `.dark` straight off <html> - an SSR-seeded useTheme() renders "light" on
+	// the server, which baked the light card face + white glare into dark mode.
+	const isDark = useIsDark() ?? false;
 	const bodyRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const { sizes, probe } = useVariantSizes();

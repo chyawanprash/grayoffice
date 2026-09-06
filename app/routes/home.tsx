@@ -10,7 +10,7 @@ import {
 	Sparkle,
 	Stack,
 } from "@phosphor-icons/react";
-import { SiteNav, SiteFooter } from "~/components/brand";
+import { SiteNav, SiteFooter, CTAButton } from "~/components/brand";
 import { RippleGridCard } from "~/components/ripple-grid/RippleGridCard";
 import { AiLightsCard } from "~/components/ai-lights/AiLightsCard";
 import { FooterGradient } from "~/components/footer-gradient";
@@ -101,9 +101,9 @@ export default function Home() {
 						reports, exceptions and human review included.
 					</p>
 					<div className="mt-8 flex flex-wrap items-center gap-3">
-						<Button render={<Link to="/sign-up" />} size="lg">
+						<CTAButton to="/sign-up" size="lg">
 							Get started <ArrowRight size={16} weight="bold" />
-						</Button>
+						</CTAButton>
 						<Button render={<a href="#workflows" />} variant="outline" size="lg">
 							See the workflows
 						</Button>
@@ -201,9 +201,9 @@ export default function Home() {
 								Set up your first workflow in minutes.
 							</div>
 						</div>
-						<Button render={<Link to="/sign-up" />} size="lg">
+						<CTAButton to="/sign-up" size="lg">
 							Get started <ArrowRight size={16} weight="bold" />
-						</Button>
+						</CTAButton>
 					</div>
 				</div>
 			</section>
