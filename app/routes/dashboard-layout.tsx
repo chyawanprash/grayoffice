@@ -3,7 +3,6 @@ import { Outlet } from "react-router";
 import type { Route } from "./+types/dashboard-layout";
 import { getUser, logout, requireUserId } from "~/lib/auth.server";
 import { SidebarProvider } from "~/components/ui/sidebar";
-import { ThemeProvider } from "~/components/medesk/theme-provider";
 import { DashboardSidebar } from "~/components/medesk/sidebar";
 import { DashboardTopbar } from "~/components/medesk/topbar";
 import "~/components/medesk/dashboard.css";
@@ -19,7 +18,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
 	const { user } = loaderData;
 	return (
-		<ThemeProvider defaultTheme="system" storageKey="grayoffice-theme">
 			<SidebarProvider
 				defaultOpen
 				className="medesk-dashboard h-svh overflow-hidden no-scrollbar"
@@ -40,6 +38,5 @@ export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
 					</div>
 				</main>
 			</SidebarProvider>
-		</ThemeProvider>
 	);
 }

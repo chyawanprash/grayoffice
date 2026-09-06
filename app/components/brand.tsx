@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { GithubLogo, LinkedinLogo, XLogo } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
+import { ThemeToggle } from "~/components/theme";
 
 export function Logo({ className = "" }: { className?: string }) {
 	return (
@@ -77,6 +78,7 @@ export function SiteNav() {
 					))}
 				</nav>
 				<div className="ml-auto flex items-center gap-2.5">
+					<ThemeToggle />
 					<Button
 						render={<Link to="/sign-in" />}
 						variant="ghost"

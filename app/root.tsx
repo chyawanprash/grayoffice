@@ -1,20 +1,22 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import type { Route } from "./+types/root";
+import { ThemeProvider, THEME_INIT_SCRIPT } from "~/components/theme";
 import "./app.css";
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<title>Gray Office — the finance ops agent</title>
 				<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+				<script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
 				<Meta />
 				<Links />
 			</head>
 			<body>
-				{children}
+				<ThemeProvider>{children}</ThemeProvider>
 				<ScrollRestoration />
 				<Scripts />
 			</body>

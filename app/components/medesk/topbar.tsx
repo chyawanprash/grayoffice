@@ -8,6 +8,7 @@ import {
   InputGroupInput,
 } from '~/components/ui/input-group'
 import { SidebarTrigger } from '~/components/ui/sidebar'
+import { ThemeToggle } from '~/components/theme'
 import { navigationGroups } from './data'
 
 export function DashboardTopbar() {
@@ -109,38 +110,40 @@ export function DashboardTopbar() {
             </div>
           </div>
 
-          <InputGroup className="hidden h-9 w-69.25 shrink-0 rounded-lg border-none bg-secondary py-1 pr-2 pl-2.5 md:flex">
-            <InputGroupAddon className="gap-1.5 p-0 text-muted-foreground">
-              <SearchIcon className="size-3" />
-            </InputGroupAddon>
-            <InputGroupInput
-              ref={searchInputRef}
-              className="h-full p-0 px-1 text-xs placeholder:text-muted-foreground"
-              aria-label="Search patients and staff"
-              placeholder="Search patients, staff..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-            {searchQuery === '' ? (
-              <InputGroupAddon align="inline-end" className="p-0 text-muted-foreground">
-                <div className="flex h-6 w-9.5 items-center justify-center gap-1 rounded-md bg-background p-1.5">
-                  <CommandIcon className="size-3" />
-                  <span className="text-xs leading-none">K</span>
-                </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <InputGroup className="hidden h-9 w-69.25 shrink-0 rounded-lg border-none bg-secondary py-1 pr-2 pl-2.5 md:flex">
+              <InputGroupAddon className="gap-1.5 p-0 text-muted-foreground">
+                <SearchIcon className="size-3" />
               </InputGroupAddon>
-            ) : null}
-          </InputGroup>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 md:hidden"
-            aria-label="Open search"
-            onClick={openMobileSearch}
-          >
-            <SearchIcon className="size-4" />
-          </Button>
+              <InputGroupInput
+                ref={searchInputRef}
+                className="h-full p-0 px-1 text-xs placeholder:text-muted-foreground"
+                aria-label="Search patients and staff"
+                placeholder="Search patients, staff..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              {searchQuery === '' ? (
+                <InputGroupAddon align="inline-end" className="p-0 text-muted-foreground">
+                  <div className="flex h-6 w-9.5 items-center justify-center gap-1 rounded-md bg-background p-1.5">
+                    <CommandIcon className="size-3" />
+                    <span className="text-xs leading-none">K</span>
+                  </div>
+                </InputGroupAddon>
+              ) : null}
+            </InputGroup>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 md:hidden"
+              aria-label="Open search"
+              onClick={openMobileSearch}
+            >
+              <SearchIcon className="size-4" />
+            </Button>
+            <ThemeToggle bordered={false} className="hover:bg-secondary/70" />
+          </div>
         </>
       )}
     </header>

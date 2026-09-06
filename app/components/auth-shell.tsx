@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { ArrowLeft } from "@phosphor-icons/react";
 import { Logo } from "~/components/brand";
+import { ThemeToggle } from "~/components/theme";
 
 /**
  * Two-panel auth layout: animated brand panel on the left, form on the right.
@@ -15,7 +16,10 @@ export function AuthShell({
 	back?: { to: string; label: string };
 }) {
 	return (
-		<div className="flex min-h-screen w-full flex-col bg-surface text-neutral-950 lg:flex-row">
+		<div className="relative flex min-h-screen w-full flex-col bg-surface text-foreground lg:flex-row">
+			<div className="absolute right-4 top-4 z-20">
+				<ThemeToggle />
+			</div>
 			{/* Brand panel */}
 			<div className="relative flex min-h-[36vh] w-full flex-col justify-between overflow-hidden bg-brand p-8 md:p-12 lg:min-h-screen lg:w-1/2">
 				<div
