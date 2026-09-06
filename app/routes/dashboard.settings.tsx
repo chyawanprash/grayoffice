@@ -1,15 +1,21 @@
+import { useEffect, useRef } from "react";
 import { Form, useNavigation } from "react-router";
 import { CheckCircle, Copy, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/dashboard.settings";
 import {
+	deleteUser,
 	disableTotp,
 	enableTotp,
 	findUserById,
+	logout,
 	requireUserId,
+	setPassword,
 	setTotpSecret,
+	verifyPassword,
 } from "~/lib/auth.server";
 import { countRecoveryCodes, regenerateRecoveryCodes } from "~/lib/mfa.server";
+import { forget } from "~/lib/pinecone.server";
 import { newTotpSecret, totpQrSvg, totpUri, verifyTotp } from "~/lib/totp.server";
 
 export function meta() {
@@ -78,6 +84,35 @@ export async function action({ request, context }: Route.ActionArgs) {
 		return { ok: "disabled" as const };
 	}
 
+	if (intent === "change-password") {
+		if (user.password_hash) {
+			const current = String(form.get("current") ?? "");
+			if (!(await verifyPassword(current, user.password_hash)))
+				return { pwError: "Current password is wrong." };
+		}
+		const next = String(form.get("next") ?? "");
+		if (next.length < 8)
+			return { pwError: "New password must be at least 8 characters." };
+		if (next !== String(form.get("confirm") ?? ""))
+			return { pwError: "The two passwords don’t match." };
+		await setPassword(DB, userId, next);
+		return { ok: "password" as const };
+	}
+
+	if (intent === "delete-account") {
+		const phrase = String(form.get("phrase") ?? "").trim().toLowerCase();
+		if (phrase !== "delete my account")
+			return { deleteError: "Type “delete my account” to confirm." };
+		if (user.password_hash) {
+			const password = String(form.get("password") ?? "");
+			if (!(await verifyPassword(password, user.password_hash)))
+				return { deleteError: "Wrong password." };
+		}
+		await deleteUser(DB, userId);
+		context.cloudflare.ctx.waitUntil(forget(context.cloudflare.env, userId));
+		throw await logout(request, SESSION_SECRET);
+	}
+
 	if (intent === "mfa-recovery-regen") {
 		if (!user.totp_enabled) return { error: "Two-factor auth isn’t on." };
 		const codes = await regenerateRecoveryCodes(DB, userId);
@@ -112,6 +147,14 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 	const nav = useNavigation();
 	const busy = nav.state !== "idle";
 	const err = actionData && "error" in actionData ? actionData.error : null;
+	const pwError =
+		actionData && "pwError" in actionData ? actionData.pwError : null;
+	const deleteError =
+		(actionData && "deleteError" in actionData
+			? actionData.deleteError
+			: null) ?? null;
+	const passwordSaved =
+		actionData && "ok" in actionData && actionData.ok === "password";
 	const freshCodes =
 		actionData && "recoveryCodes" in actionData ? actionData.recoveryCodes : null;
 
@@ -248,6 +291,142 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 					</div>
 				</div>
 			</section>
+
+			<section className="mt-6 rounded-xl border border-neutral-200 bg-surface p-6">
+				<h2 className="font-medium text-neutral-900">
+					{loaderData.hasPassword ? "Change password" : "Set a password"}
+				</h2>
+				<p className="mt-1 text-sm text-neutral-500">
+					{loaderData.hasPassword
+						? "You’ll stay signed in on this device."
+						: "Add a password so you can sign in without Google."}
+				</p>
+				{pwError && <p className="mt-3 text-sm text-danger">{pwError}</p>}
+				{passwordSaved && (
+					<p className="mt-3 text-sm text-green-700">Password updated.</p>
+				)}
+				<Form method="post" className="mt-4 grid max-w-sm gap-2" key={String(passwordSaved)}>
+					<input type="hidden" name="intent" value="change-password" />
+					{loaderData.hasPassword && (
+						<input
+							name="current"
+							type="password"
+							autoComplete="current-password"
+							placeholder="Current password"
+							className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+						/>
+					)}
+					<input
+						name="next"
+						type="password"
+						autoComplete="new-password"
+						placeholder="New password (min 8 characters)"
+						className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+					/>
+					<input
+						name="confirm"
+						type="password"
+						autoComplete="new-password"
+						placeholder="Confirm new password"
+						className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+					/>
+					<Button type="submit" size="sm" disabled={busy} className="justify-self-start">
+						{loaderData.hasPassword ? "Update password" : "Set password"}
+					</Button>
+				</Form>
+			</section>
+
+			<section className="mt-6 rounded-xl border border-danger/30 bg-surface p-6">
+				<h2 className="font-medium text-danger">Delete account</h2>
+				<p className="mt-1 text-sm text-neutral-500">
+					Permanently removes your account, sign-in methods, recovery codes, and
+					saved assistant memory. This can’t be undone.
+				</p>
+				<DeleteAccountDialog
+					hasPassword={loaderData.hasPassword}
+					error={deleteError}
+					busy={busy}
+				/>
+			</section>
 		</div>
+	);
+}
+
+function DeleteAccountDialog({
+	hasPassword,
+	error,
+	busy,
+}: {
+	hasPassword: boolean;
+	error: string | null;
+	busy: boolean;
+}) {
+	const ref = useRef<HTMLDialogElement>(null);
+
+	// Re-open the dialog after a failed attempt so the error is visible.
+	useEffect(() => {
+		if (error) ref.current?.showModal();
+	}, [error]);
+
+	return (
+		<>
+			<Button
+				type="button"
+				variant="outline"
+				size="sm"
+				className="mt-4 text-danger"
+				onClick={() => ref.current?.showModal()}
+			>
+				Delete account
+			</Button>
+
+			<dialog
+				ref={ref}
+				className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-neutral-200 bg-surface p-6 backdrop:bg-black/40"
+			>
+				<h3 className="font-medium text-neutral-900">Delete your account?</h3>
+				<p className="mt-1 text-sm text-neutral-500">
+					This is permanent. Type <b>delete my account</b> below
+					{hasPassword && " and enter your password"} to confirm.
+				</p>
+				{error && <p className="mt-3 text-sm text-danger">{error}</p>}
+				<Form method="post" className="mt-4 grid gap-2">
+					<input type="hidden" name="intent" value="delete-account" />
+					<input
+						name="phrase"
+						autoComplete="off"
+						placeholder="delete my account"
+						className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
+					/>
+					{hasPassword && (
+						<input
+							name="password"
+							type="password"
+							autoComplete="current-password"
+							placeholder="Current password"
+							className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
+						/>
+					)}
+					<div className="mt-2 flex items-center justify-end gap-2">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => ref.current?.close()}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							variant="danger"
+							size="sm"
+							disabled={busy}
+						>
+							Delete account
+						</Button>
+					</div>
+				</Form>
+			</dialog>
+		</>
 	);
 }

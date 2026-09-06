@@ -61,6 +61,16 @@ export async function remember(
 	});
 }
 
+/** Drop everything remembered for a user (their whole namespace). Best effort. */
+export async function forget(env: Env, userId: string): Promise<void> {
+	if (!configured(env)) return;
+	try {
+		await pc(env, "/vectors/delete", { namespace: userId, deleteAll: true });
+	} catch {
+		// namespace may not exist yet — nothing to clean up
+	}
+}
+
 /** Return the text of the most relevant remembered snippets. */
 export async function recall(
 	env: Env,

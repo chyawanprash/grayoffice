@@ -127,7 +127,17 @@ export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
 							/>
 						</label>
 						<label className="block text-sm font-medium text-neutral-700">
-							Password
+							<span className="flex items-center justify-between">
+								Password
+								{!signup && (
+									<Link
+										to="/auth/reset"
+										className="text-xs font-normal text-brand hover:underline"
+									>
+										Forgot password?
+									</Link>
+								)}
+							</span>
 							<input
 								type="password"
 								name="password"

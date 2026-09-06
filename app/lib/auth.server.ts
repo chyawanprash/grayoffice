@@ -341,6 +341,29 @@ export async function disableTotp(db: D1Database, userId: string): Promise<void>
 		.run();
 }
 
+/** Set (or replace) a user's password. */
+export async function setPassword(
+	db: D1Database,
+	userId: string,
+	password: string,
+): Promise<void> {
+	const hash = await hashPassword(password);
+	await db
+		.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+		.bind(hash, userId)
+		.run();
+}
+
+/** Permanently delete a user and everything scoped to them. */
+export async function deleteUser(db: D1Database, userId: string): Promise<void> {
+	// Explicit child deletes — D1 doesn't enforce the ON DELETE CASCADE FKs.
+	await db.batch([
+		db.prepare("DELETE FROM mfa_recovery_codes WHERE user_id = ?").bind(userId),
+		db.prepare("DELETE FROM email_otps WHERE user_id = ?").bind(userId),
+		db.prepare("DELETE FROM users WHERE id = ?").bind(userId),
+	]);
+}
+
 export async function createUser(
 	db: D1Database,
 	email: string,
