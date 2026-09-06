@@ -63,7 +63,7 @@ export function createFinanceAgent(
 				},
 			}),
 
-			listОrgMembers: tool({
+			listOrgMembers: tool({
 				description: "List the people in this organization and their roles.",
 				inputSchema: z.object({}),
 				execute: async () => ({ members: await listMembers(env.DB, orgId) }),

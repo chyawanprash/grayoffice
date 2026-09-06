@@ -3,10 +3,12 @@ import type { Route } from "./+types/api.agent";
 import { createFinanceAgent } from "~/lib/agent.server";
 import { remember } from "~/lib/pinecone.server";
 import { requireUserId } from "~/lib/auth.server";
+import { requireOrg } from "~/lib/org.server";
 
 export async function action({ request, context }: Route.ActionArgs) {
 	const env = context.cloudflare.env;
 	const userId = await requireUserId(request, env.SESSION_SECRET);
+	const { orgId } = await requireOrg(request, env);
 
 	const { messages } = (await request.json()) as { messages: unknown[] };
 
@@ -24,7 +26,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	}
 
 	return createAgentUIStreamResponse({
-		agent: createFinanceAgent(env, userId),
+		agent: createFinanceAgent(env, { userId, orgId }),
 		uiMessages: messages,
 	});
 }
