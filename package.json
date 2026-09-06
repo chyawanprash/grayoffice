@@ -1,5 +1,5 @@
 {
-	"name": "ai-brand-visibility-template",
+	"name": "grayoffice-app",
 	"description": "Test whether AI models mention your brand when answering relevant queries. Runs prompts through GPT-5.4, Claude Sonnet 4, Gemini 3 Flash, Llama 4, and Mistral via Cloudflare AI Gateway.",
 	"cloudflare": {
 		"label": "AI Brand Visibility Template",

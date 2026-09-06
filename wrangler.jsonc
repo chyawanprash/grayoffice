@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "ai-brand-visibility-template",
+	"name": "grayoffice-app",
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "./workers/app.ts",
@@ -13,7 +13,7 @@
 	// `wrangler secret put`.
 	"vars": {
 		"APP_URL": "https://grayoffice.app",
-		"RESEND_FROM": "Gray Office <login@grayoffice.app>",
+		"RESEND_FROM": "hello@grayoffice.app",
 		"BANK_URL": "https://bank.grayoffice.app",
 		// Pinecone index name - created automatically on first use (dense, 768,
 		// cosine, serverless aws/us-east-1). Only PINECONE_API_KEY is a secret.
@@ -26,7 +26,7 @@
 	"kv_namespaces": [
 		{
 			"binding": "AEO_KV",
-			"id": "623729d87586478981a14c15ddfe3764"
+			"id": "e0149b19ae504447933baacc2b672826"
 		}
 	],
 	"d1_databases": [
