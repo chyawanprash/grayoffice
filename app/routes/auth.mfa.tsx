@@ -31,9 +31,9 @@ function maskEmail(email: string): string {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const { DB, SESSION_SECRET } = context.cloudflare.env;
 	const pending = await getPendingMfa(request, SESSION_SECRET);
-	if (!pending) throw redirect("/auth");
+	if (!pending) throw redirect("/sign-in");
 	const user = await findUserById(DB, pending.userId);
-	if (!user || !user.totp_enabled) throw redirect("/auth");
+	if (!user || !user.totp_enabled) throw redirect("/sign-in");
 	return {
 		email: maskEmail(user.email),
 		recoveryCount: await countRecoveryCodes(DB, user.id),
@@ -44,9 +44,9 @@ export async function action({ request, context }: Route.ActionArgs) {
 	const env = context.cloudflare.env;
 	const { DB, SESSION_SECRET } = env;
 	const pending = await getPendingMfa(request, SESSION_SECRET);
-	if (!pending) throw redirect("/auth");
+	if (!pending) throw redirect("/sign-in");
 	const user = await findUserById(DB, pending.userId);
-	if (!user || !user.totp_secret) throw redirect("/auth");
+	if (!user || !user.totp_secret) throw redirect("/sign-in");
 
 	const form = await request.formData();
 	const intent = String(form.get("intent") ?? "");
@@ -106,7 +106,7 @@ export default function MfaChallenge({ actionData, loaderData }: Route.Component
 	};
 
 	return (
-		<AuthShell back={{ to: "/auth", label: "Back to sign in" }}>
+		<AuthShell back={{ to: "/sign-in", label: "Back to sign in" }}>
 			<div>
 				<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
 					{titles[mode]}

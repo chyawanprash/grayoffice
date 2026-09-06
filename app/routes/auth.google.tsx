@@ -6,7 +6,7 @@ import { googleConfigured, startGoogleAuth } from "~/lib/google.server";
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const env = context.cloudflare.env;
 	if (await getUserId(request, env.SESSION_SECRET)) throw redirect("/dashboard");
-	if (!googleConfigured(env)) throw redirect("/auth");
+	if (!googleConfigured(env)) throw redirect("/sign-in");
 
 	const url = new URL(request.url);
 	const redirectTo = url.searchParams.get("redirectTo") ?? "/dashboard";

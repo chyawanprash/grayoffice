@@ -18,7 +18,7 @@ import {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const env = context.cloudflare.env;
 	const { DB, SESSION_SECRET } = env;
-	if (!googleConfigured(env)) throw redirect("/auth");
+	if (!googleConfigured(env)) throw redirect("/sign-in");
 
 	const url = new URL(request.url);
 	const code = url.searchParams.get("code");
@@ -27,7 +27,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const clearCookie = await clearOauthCookie(env);
 
 	const fail = (reason: string) =>
-		redirect(`/auth?error=${encodeURIComponent(reason)}`, {
+		redirect(`/sign-in?error=${encodeURIComponent(reason)}`, {
 			headers: { "Set-Cookie": clearCookie },
 		});
 

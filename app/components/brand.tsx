@@ -78,14 +78,14 @@ export function SiteNav() {
 				</nav>
 				<div className="ml-auto flex items-center gap-2.5">
 					<Button
-						render={<Link to="/auth" />}
+						render={<Link to="/sign-in" />}
 						variant="ghost"
 						size="md"
 						className="hidden sm:inline-flex"
 					>
 						Sign in
 					</Button>
-					<Button render={<Link to="/auth?new" />} size="md">
+					<Button render={<Link to="/sign-up" />} size="md">
 						Get started
 					</Button>
 				</div>

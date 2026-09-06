@@ -23,9 +23,10 @@ export function meta() {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const { SESSION_SECRET } = context.cloudflare.env;
 	if (await getUserId(request, SESSION_SECRET)) throw redirect("/dashboard");
+	const url = new URL(request.url);
 	return {
 		google: googleConfigured(context.cloudflare.env),
-		signup: new URL(request.url).searchParams.has("new"),
+		signup: url.pathname === "/sign-up" || url.searchParams.has("new"),
 	};
 }
 
@@ -86,11 +87,11 @@ export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
 							? "Enter your email and pick a password. We’ll email you a code to confirm your address."
 							: "Enter your email and password."}{" "}
 						{signup ? (
-							<Link to="/auth" className="font-medium text-brand hover:underline">
+							<Link to="/sign-in" className="font-medium text-brand hover:underline">
 								Already have an account?
 							</Link>
 						) : (
-							<Link to="/auth?new" className="font-medium text-brand hover:underline">
+							<Link to="/sign-up" className="font-medium text-brand hover:underline">
 								New here? Create an account.
 							</Link>
 						)}

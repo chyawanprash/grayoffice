@@ -4,8 +4,8 @@ import { Logo } from "~/components/brand";
 
 /**
  * Two-panel auth layout: animated brand panel on the left, form on the right.
- * Shared by /auth, /auth/verify and /auth/mfa so the OTP steps look identical
- * to sign-in.
+ * Shared by /sign-in, /sign-up, /auth/verify and /auth/mfa so the OTP steps
+ * look identical to sign-in.
  */
 export function AuthShell({
 	children,

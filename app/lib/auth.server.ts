@@ -190,14 +190,14 @@ export async function requireUserId(
 	secret: string,
 ): Promise<string> {
 	const userId = await getUserId(request, secret);
-	if (!userId) throw redirect("/auth");
+	if (!userId) throw redirect("/sign-in");
 	return userId;
 }
 
 export async function logout(request: Request, secret: string) {
 	const { getSession, destroySession } = storage(secret);
 	const session = await getSession(request.headers.get("Cookie"));
-	return redirect("/auth", {
+	return redirect("/sign-in", {
 		headers: { "Set-Cookie": await destroySession(session) },
 	});
 }

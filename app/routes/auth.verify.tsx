@@ -26,9 +26,9 @@ function maskEmail(email: string): string {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const { DB, SESSION_SECRET } = context.cloudflare.env;
 	const userId = await getPendingVerifyUserId(request, SESSION_SECRET);
-	if (!userId) throw redirect("/auth");
+	if (!userId) throw redirect("/sign-in");
 	const user = await findUserById(DB, userId);
-	if (!user) throw redirect("/auth");
+	if (!user) throw redirect("/sign-in");
 	if (user.email_verified) throw redirect("/dashboard");
 	return { email: maskEmail(user.email) };
 }
@@ -37,9 +37,9 @@ export async function action({ request, context }: Route.ActionArgs) {
 	const env = context.cloudflare.env;
 	const { DB, SESSION_SECRET } = env;
 	const userId = await getPendingVerifyUserId(request, SESSION_SECRET);
-	if (!userId) throw redirect("/auth");
+	if (!userId) throw redirect("/sign-in");
 	const user = await findUserById(DB, userId);
-	if (!user) throw redirect("/auth");
+	if (!user) throw redirect("/sign-in");
 
 	const form = await request.formData();
 	const intent = String(form.get("intent") ?? "");
@@ -83,7 +83,7 @@ export default function VerifyEmail({ actionData, loaderData }: Route.ComponentP
 	const sent = actionData && "sent" in actionData ? actionData.sent : false;
 
 	return (
-		<AuthShell back={{ to: "/auth", label: "Back to sign in" }}>
+		<AuthShell back={{ to: "/sign-in", label: "Back to sign in" }}>
 			<div>
 				<h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
 					Confirm your email
