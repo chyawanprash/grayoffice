@@ -46,4 +46,5 @@ export default [
 		route("dashboard/settings", "routes/dashboard.settings.tsx"),
 		route("dashboard/:section", "routes/dashboard.section.tsx"),
 	]),
+	route(":slug", "routes/site.$slug.tsx"),
 ] satisfies RouteConfig;

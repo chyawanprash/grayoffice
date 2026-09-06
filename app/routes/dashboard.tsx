@@ -35,11 +35,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 const card = "rounded-xl bg-card p-4 text-card-foreground";
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
-	const { orgName, period, cash, recent, close, analytics, jurisdiction, recon } = loaderData;
+	const { orgName, period, cash, recent, close, analytics, jurisdiction } = loaderData;
 	const openCloseItems = close?.items.filter((i) => i.count > 0) ?? [];
-	const reconExceptions = recon && !("error" in recon)
-		? (recon.partial_count ?? 0) + (recon.unmatched_count ?? 0)
-		: null;
+	const reconItem = close?.items.find((i) => i.step === "Reconcile bank transactions");
 
 	return (
 		<div className="flex flex-col gap-6 p-4 md:p-6">
@@ -118,23 +116,28 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 				</section>
 
 				<section className={card}>
-					<h2 className="text-lg font-medium">Reconciliation</h2>
-					{recon == null || "error" in recon ? (
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-medium">Reconciliation</h2>
+						<Link to="/dashboard/audit" className="text-xs font-medium text-brand hover:underline">
+							Audit room →
+						</Link>
+					</div>
+					{!reconItem ? (
 						<p className="mt-3 text-sm text-muted-foreground">
 							Connect banking to match bank lines against the ledger.
 						</p>
+					) : reconItem.count === 0 ? (
+						<p className="mt-3 text-sm text-[var(--dashboard-completed)]">
+							All bank lines for {period} are matched.
+						</p>
 					) : (
-						<div className="mt-3 grid grid-cols-3 gap-2 text-center">
-							<ReconCell n={recon.matched_count} label="matched" tone="up" />
-							<ReconCell n={recon.partial_count} label="partial" tone="warn" />
-							<ReconCell n={recon.unmatched_count} label="exceptions" tone="down" />
+						<div className="mt-3">
+							<ReconCell n={reconItem.count} label="unreconciled bank lines this period" tone="down" />
+							<p className="mt-3 text-xs text-muted-foreground">
+								Ask Bhondu to run reconciliation — only the exceptions come back to you.
+							</p>
 						</div>
 					)}
-					{reconExceptions ? (
-						<p className="mt-3 text-xs text-muted-foreground">
-							{reconExceptions} line(s) need a human — see the audit room.
-						</p>
-					) : null}
 				</section>
 			</div>
 

@@ -150,19 +150,47 @@ export function SiteNav() {
 	);
 }
 
-const FOOTER_COLS: { title: string; links: string[] }[] = [
-	{ title: "Product", links: ["Close the books", "Reconciliation", "Invoices", "Cash reports"] },
-	{ title: "Resources", links: ["Documentation", "Changelog", "Status", "Support"] },
-	{ title: "Company", links: ["About", "Careers", "Security", "Contact"] },
+const FOOTER_COLS: { title: string; links: { label: string; slug: string }[] }[] = [
+	{
+		title: "Product",
+		links: [
+			{ label: "Close the books", slug: "close-the-books" },
+			{ label: "Reconciliation", slug: "reconciliation" },
+			{ label: "Invoices", slug: "invoices" },
+			{ label: "Cash reports", slug: "cash-reports" },
+		],
+	},
+	{
+		title: "Resources",
+		links: [
+			{ label: "Documentation", slug: "docs" },
+			{ label: "Changelog", slug: "changelog" },
+			{ label: "Status", slug: "status" },
+			{ label: "Support", slug: "support" },
+		],
+	},
+	{
+		title: "Company",
+		links: [
+			{ label: "About", slug: "about" },
+			{ label: "Careers", slug: "careers" },
+			{ label: "Security", slug: "security" },
+			{ label: "Contact", slug: "contact" },
+		],
+	},
 ];
 
 const SOCIALS = [
-	{ label: "LinkedIn", href: "#", Icon: LinkedinLogo },
-	{ label: "X", href: "#", Icon: XLogo },
-	{ label: "GitHub", href: "#", Icon: GithubLogo },
+	{ label: "LinkedIn", href: "https://www.linkedin.com", Icon: LinkedinLogo },
+	{ label: "X", href: "https://x.com", Icon: XLogo },
+	{ label: "GitHub", href: "https://github.com", Icon: GithubLogo },
 ];
 
-const LEGAL = ["Privacy Policy", "Terms of Service", "Cookies"];
+const LEGAL = [
+	{ label: "Privacy Policy", slug: "privacy" },
+	{ label: "Terms of Service", slug: "terms" },
+	{ label: "Cookies", slug: "cookies" },
+];
 
 export function SiteFooter() {
 	return (
@@ -200,13 +228,13 @@ export function SiteFooter() {
 											</h4>
 											<ul className="flex flex-col gap-3">
 												{col.links.map((l) => (
-													<li key={l}>
-														<a
-															href="/#"
+													<li key={l.slug}>
+														<Link
+															to={`/${l.slug}`}
 															className="text-sm text-neutral-500 transition-colors hover:text-brand"
 														>
-															{l}
-														</a>
+															{l.label}
+														</Link>
 													</li>
 												))}
 											</ul>
@@ -225,11 +253,11 @@ export function SiteFooter() {
 							</p>
 							<div className="flex items-center gap-4 text-sm text-neutral-500">
 								{LEGAL.map((l, i) => (
-									<span key={l} className="flex items-center gap-4">
+									<span key={l.slug} className="flex items-center gap-4">
 										{i > 0 && <span className="h-4 w-px bg-neutral-300" />}
-										<a href="/#" className="transition-colors hover:text-neutral-900">
-											{l}
-										</a>
+										<Link to={`/${l.slug}`} className="transition-colors hover:text-neutral-900">
+											{l.label}
+										</Link>
 									</span>
 								))}
 							</div>
