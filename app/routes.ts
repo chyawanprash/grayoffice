@@ -17,6 +17,7 @@ export default [
 	route("logout", "routes/logout.tsx"),
 	route("agent", "routes/api.agent.tsx"),
 	route("settings/data", "routes/settings.data.tsx"),
+	route("link", "routes/link.tsx"),
 	layout("routes/dashboard-layout.tsx", [
 		route("dashboard", "routes/dashboard.tsx"),
 		route("dashboard/assistant", "routes/dashboard.assistant.tsx"),

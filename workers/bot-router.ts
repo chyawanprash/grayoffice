@@ -50,14 +50,25 @@ async function routeByText(_env: Env, text: string): Promise<RouteName> {
 	return text.trim() ? "ask" : "unhandled";
 }
 
+/** A linked Gray Office account for the platform user who sent the message. */
+export type BotIdentity = { userId: string; name: string | null; email: string };
+
 /** Free-text Q&A backed by Workers AI - the bots' "use the backend's AI" path. */
-export async function askAgent(env: Env, msg: Inbound): Promise<{ reply: string }> {
+export async function askAgent(
+	env: Env,
+	msg: Inbound,
+	identity?: BotIdentity | null,
+): Promise<{ reply: string }> {
 	if (!env.AI || !msg.text.trim())
 		return { reply: "Ask me a finance operations question and I'll help." };
 
+	const system = identity
+		? `${CHAT_SYSTEM}\nYou are talking to ${identity.name || identity.email}, who is signed in to Gray Office.`
+		: CHAT_SYSTEM;
+
 	const r = (await env.AI.run(CHAT_MODEL, {
 		messages: [
-			{ role: "system", content: CHAT_SYSTEM },
+			{ role: "system", content: system },
 			{ role: "user", content: msg.text.slice(0, 4000) },
 		],
 		max_tokens: 512,
@@ -72,17 +83,26 @@ export async function handleInbound(env: Env, msg: Inbound): Promise<InboundResu
 		? `${msg.files.length} file(s): ${msg.files.map((f) => f.name).join(", ")}`
 		: msg.text.slice(0, 140);
 
+	const identity = await lookupIdentity(env, msg);
+
 	await env.DB.prepare(
-		"INSERT INTO bot_events (id, source, external_user, kind, summary) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO bot_events (id, source, external_user, user_id, kind, summary) VALUES (?, ?, ?, ?, ?, ?)",
 	)
-		.bind(id, msg.source, msg.externalUser, msg.files.length ? "file" : "message", summary)
+		.bind(
+			id,
+			msg.source,
+			msg.externalUser,
+			identity?.userId ?? null,
+			msg.files.length ? "file" : "message",
+			summary,
+		)
 		.run();
 
 	const route = routeByFiles(msg.files) ?? (await routeByText(env, msg.text));
 	await update(env, id, { route, status: "routed" });
 
 	try {
-		const detail = await dispatch(env, route, msg);
+		const detail = await dispatch(env, route, msg, identity);
 		await update(env, id, { status: "done", detail: JSON.stringify(detail) });
 		return { id, route, status: "done", detail };
 	} catch (err) {
@@ -92,7 +112,25 @@ export async function handleInbound(env: Env, msg: Inbound): Promise<InboundResu
 	}
 }
 
-async function dispatch(env: Env, route: RouteName, msg: Inbound): Promise<unknown> {
+/** Resolve the linked Gray Office account for this platform user, if any. */
+async function lookupIdentity(env: Env, msg: Inbound): Promise<BotIdentity | null> {
+	if (!msg.externalUser) return null;
+	const row = await env.DB.prepare(
+		`SELECT u.id AS userId, u.name AS name, u.email AS email
+		 FROM bot_links l JOIN users u ON u.id = l.user_id
+		 WHERE l.source = ? AND l.external_user = ?`,
+	)
+		.bind(msg.source, msg.externalUser)
+		.first<{ userId: string; name: string | null; email: string }>();
+	return row ?? null;
+}
+
+async function dispatch(
+	env: Env,
+	route: RouteName,
+	msg: Inbound,
+	identity: BotIdentity | null,
+): Promise<unknown> {
 	switch (route) {
 		case "pdf-to-json": {
 			const pdfs = msg.files.filter(
@@ -103,7 +141,7 @@ async function dispatch(env: Env, route: RouteName, msg: Inbound): Promise<unkno
 			return { results };
 		}
 		case "ask":
-			return askAgent(env, msg);
+			return askAgent(env, msg, identity);
 		case "unhandled":
 			return { note: "No route matched. Add a case in bot-router.ts dispatch()." };
 	}
