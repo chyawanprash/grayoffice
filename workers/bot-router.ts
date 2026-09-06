@@ -13,6 +13,7 @@ export type InboundFile = { name: string; url?: string; blob?: Blob; mime?: stri
 
 export type Inbound = {
 	source: "telegram" | "slack" | "discord";
+	orgId?: string | null;
 	externalUser: string | null;
 	text: string;
 	files: InboundFile[];
@@ -73,9 +74,9 @@ export async function handleInbound(env: Env, msg: Inbound): Promise<InboundResu
 		: msg.text.slice(0, 140);
 
 	await env.DB.prepare(
-		"INSERT INTO bot_events (id, source, external_user, kind, summary) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO bot_events (id, org_id, source, external_user, kind, summary) VALUES (?, ?, ?, ?, ?, ?)",
 	)
-		.bind(id, msg.source, msg.externalUser, msg.files.length ? "file" : "message", summary)
+		.bind(id, msg.orgId ?? null, msg.source, msg.externalUser, msg.files.length ? "file" : "message", summary)
 		.run();
 
 	const route = routeByFiles(msg.files) ?? (await routeByText(env, msg.text));

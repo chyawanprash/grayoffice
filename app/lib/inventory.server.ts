@@ -176,7 +176,7 @@ export async function inventoryGrid(db: D1Database, orgId: string, year: number)
 	for (const item of items) {
 		const months = monthlySpend(item, year);
 		const total = months.reduce((a, b) => a + b, 0);
-		const g = groups.get(item.category) ?? {
+		const g: InventoryCategoryGroup = groups.get(item.category) ?? {
 			category: item.category,
 			items: [],
 			months: new Array(12).fill(0),

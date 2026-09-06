@@ -2,11 +2,12 @@ import { Form, useNavigation } from "react-router";
 import type { Route } from "./+types/dashboard.inventory";
 import { requireOrg } from "~/lib/org.server";
 import {
-	INVENTORY_CATEGORIES,
 	addInventoryItem,
 	deleteInventoryItem,
 	inventoryGrid,
 } from "~/lib/inventory.server";
+
+const CATEGORIES = ["software", "hardware", "consumables", "services", "other"];
 
 export function meta() {
 	return [{ title: "Inventory | Gray Office" }];
@@ -186,7 +187,7 @@ export default function Inventory({ loaderData, actionData }: Route.ComponentPro
 					</Field>
 					<Field label="Category">
 						<select name="category" className={inputCls} defaultValue="software">
-							{INVENTORY_CATEGORIES.map((c) => (
+							{CATEGORIES.map((c) => (
 								<option key={c} value={c} className="capitalize">{c}</option>
 							))}
 						</select>

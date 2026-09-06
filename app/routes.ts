@@ -32,6 +32,7 @@ export default [
 		route("dashboard/memories", "routes/dashboard.memories.tsx"),
 		route("dashboard/search", "routes/dashboard.search.tsx"),
 		route("dashboard/invoices", "routes/dashboard.invoices.tsx"),
+		route("dashboard/inventory", "routes/dashboard.inventory.tsx"),
 		route("dashboard/agent-model", "routes/dashboard.agent-model.tsx"),
 		route("dashboard/downloads", "routes/dashboard.downloads.tsx"),
 		route("dashboard/integrations", "routes/dashboard.integrations.tsx"),

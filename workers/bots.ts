@@ -1,56 +1,78 @@
 /**
- * Ingest API for the external bots (Slack / Telegram / Discord bot code lives in
- * their own repos). A bot POSTs a normalized event here; grayoffice does the AI
- * routing, PDF->JSON conversion, and audit logging, then returns the result.
+ * Inbound webhooks for the chat bot integrations, mounted at /api/bots.
  *
- *   POST /api/bots/ingest
- *   Authorization: Bearer <BOT_INGEST_TOKEN>
- *   { "source": "telegram", "externalUser": "@ada",
- *     "text": "...", "files": [{ "name": "invoice.pdf", "url": "https://...", "mime": "application/pdf" }] }
+ *   POST /api/bots/:platform/:orgId      (platform = slack | telegram | discord)
  *
- * Responds 200 { id, route, status, detail } once processed. Runs synchronously:
- * a PDF conversion takes a few seconds; give the client a generous timeout.
+ * Each org connects its own Slack / Telegram / Discord app on
+ * /dashboard/integrations. The platform delivers events here; we verify the
+ * signature against that org's stored secret, normalise the payload, run it
+ * through the AI pipeline (`handleInbound`), and reply on the same platform.
  */
 import { Hono } from "hono";
-import { handleInbound, type Inbound } from "./bot-router";
+import { handleInbound } from "./bot-router";
+import {
+	BOT_PLATFORMS,
+	getBotIntegration,
+	parseInbound,
+	resultToText,
+	sendReply,
+	verifyInbound,
+	type BotPlatform,
+} from "~/lib/bots.server";
 
-type Env = {
-	AI: Ai;
-	DB: D1Database;
-	BOT_INGEST_TOKEN?: string;
-};
+type Env = { AI: Ai; DB: D1Database };
 
 export const botRoutes = new Hono<{ Bindings: Env }>();
 
-botRoutes.post("/ingest", async (c) => {
-	const token = c.env.BOT_INGEST_TOKEN;
-	if (token && c.req.header("authorization") !== `Bearer ${token}`)
-		return c.json({ error: "unauthorized" }, 401);
+botRoutes.post("/:platform/:orgId", async (c) => {
+	const platform = c.req.param("platform") as BotPlatform;
+	const orgId = c.req.param("orgId");
+	if (!BOT_PLATFORMS.includes(platform)) return c.json({ error: "unknown platform" }, 404);
 
-	const b = await c.req.json<Partial<Inbound>>().catch(() => null);
-	if (!b || !b.source || !["telegram", "slack", "discord"].includes(b.source))
-		return c.json({ error: "source must be telegram | slack | discord" }, 400);
-	if (!b.text && !(b.files && b.files.length))
-		return c.json({ error: "provide text or files" }, 400);
+	const raw = await c.req.text();
+	const integ = await getBotIntegration(c.env.DB, orgId, platform);
+	if (!integ) return c.json({ error: "not connected" }, 404);
 
-	const result = await handleInbound(c.env, {
-		source: b.source,
-		externalUser: b.externalUser ?? null,
-		text: b.text ?? "",
-		files: (b.files ?? []).map((f) => {
-			// A file may arrive as a platform URL or as inline base64 bytes
-			// (Slack / Telegram file URLs need auth, so bytes are more reliable).
-			const raw = (f as { dataB64?: string }).dataB64;
-			let blob: Blob | undefined;
-			if (raw) {
-				const bin = atob(raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw);
-				const bytes = new Uint8Array(bin.length);
-				for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-				blob = new Blob([bytes], { type: f.mime ?? "application/pdf" });
-			}
-			return { name: f.name ?? "file", url: f.url, mime: f.mime, blob };
-		}),
-	});
+	// Slack URL verification handshake (sent before the signature matters).
+	if (platform === "slack") {
+		const probe = safeJson(raw);
+		if (probe?.type === "url_verification") return c.json({ challenge: probe.challenge });
+	}
 
-	return c.json(result);
+	if (!(await verifyInbound(platform, raw, c.req.raw.headers, integ)))
+		return c.json({ error: "bad signature" }, 401);
+
+	const body = safeJson(raw);
+	if (!body) return c.json({ error: "bad body" }, 400);
+
+	// Discord PING → PONG.
+	if (platform === "discord" && body.type === 1) return c.json({ type: 1 });
+
+	const parsed = await parseInbound(platform, body, integ).catch(() => null);
+	if (!parsed) return platform === "discord" ? c.json({ type: 5 }) : c.json({ ok: true });
+
+	const run = (async () => {
+		try {
+			const result = await handleInbound(c.env, { source: platform, orgId, ...parsed.event });
+			if (parsed.reply) await sendReply(integ, parsed.reply, resultToText(result.detail));
+		} catch (err) {
+			console.error(`bot ${platform}/${orgId} failed: ${err}`);
+			if (parsed.reply) await sendReply(integ, parsed.reply, "Something went wrong handling that.").catch(() => {});
+		}
+	})();
+
+	// Slack and Discord need an ack within 3s; do the slow work in the background.
+	c.executionCtx.waitUntil(run);
+	if (platform === "discord") return c.json({ type: 5 }); // deferred channel message
+	if (platform === "slack") return c.json({ ok: true });
+	await run; // Telegram tolerates a slow response and has no deferral concept
+	return c.json({ ok: true });
 });
+
+function safeJson(s: string): any | null {
+	try {
+		return JSON.parse(s);
+	} catch {
+		return null;
+	}
+}

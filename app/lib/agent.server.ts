@@ -31,6 +31,12 @@ import {
 	processInvoiceDocument,
 	setOrgProfile,
 } from "./ledger.server";
+import {
+	INVENTORY_CATEGORIES,
+	addInventoryItem,
+	listInventory,
+	inventoryGrid,
+} from "./inventory.server";
 
 /**
  * The Gray Office finance agent. The model is per-organization (chosen on the
@@ -488,6 +494,34 @@ export function createFinanceAgent(
 					await postJournalEntry(env.DB, orgId, id);
 					return { ok: true };
 				},
+			}),
+
+			/* ---- inventory / spend ---- */
+			listInventory: tool({
+				description: "List tracked inventory / recurring spend items (software subscriptions, hardware, consumables).",
+				inputSchema: z.object({}),
+				execute: async () => ({ items: await listInventory(env.DB, orgId) }),
+			}),
+			addInventoryItem: tool({
+				description:
+					"Add an inventory / spend item. kind 'subscription' recurs at the given cadence; kind 'purchase' is a one-off in start_date's month. amount is in major currency units, per unit.",
+				inputSchema: z.object({
+					name: z.string(),
+					category: z.enum(INVENTORY_CATEGORIES as unknown as [string, ...string[]]).optional(),
+					vendor: z.string().optional(),
+					kind: z.enum(["subscription", "purchase"]).optional(),
+					cadence: z.enum(["monthly", "yearly"]).optional(),
+					amount: z.number(),
+					quantity: z.number().optional(),
+					start_date: z.string().optional().describe("YYYY-MM-DD"),
+					notes: z.string().optional(),
+				}),
+				execute: async (input) => addInventoryItem(env.DB, orgId, { ...input, source: "agent" }),
+			}),
+			inventorySpend: tool({
+				description: "The inventory spend grid for a year: per-category and per-month totals plus the grand total.",
+				inputSchema: z.object({ year: z.number().int().optional() }),
+				execute: async ({ year }) => inventoryGrid(env.DB, orgId, year ?? new Date().getFullYear()),
 			}),
 
 			/* ---- accruals ---- */

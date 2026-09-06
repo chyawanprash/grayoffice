@@ -46,6 +46,7 @@ export const navigationGroups: NavigationGroup[] = [
     collapsible: true,
     items: [
       { name: 'Invoices', href: '/invoices', icon: Icons.FileIcon },
+      { name: 'Inventory', href: '/inventory', icon: Icons.StackIcon },
       { name: 'Banking', href: '/banking', icon: Building2Icon },
     ],
   },
