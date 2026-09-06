@@ -194,6 +194,23 @@ hard to reverse. State clearly what you found and what decision you need.`;
 
 type AgentEnv = Env;
 
+/**
+ * Run the finance agent once and return plain text — the entry point for the
+ * chat-bot adapters (Slack / Telegram / Discord). Same agent, same tools as the
+ * web chat; no streaming. `userId` scopes memory + audit to a real user.
+ */
+export async function runFinanceAgentText(
+	env: AgentEnv,
+	ctx: { userId: string; orgId: string; model?: string | null; source?: string },
+	message: string,
+): Promise<string> {
+	const agent = createFinanceAgent(env, ctx);
+	const res = await agent.generate({
+		prompt: `[Message from ${ctx.source ?? "chat"}] ${message}`.slice(0, 8000),
+	});
+	return (res.text ?? "").trim() || "I couldn't produce an answer to that.";
+}
+
 export function createFinanceAgent(
 	env: AgentEnv,
 	{ userId, orgId, model }: { userId: string; orgId: string; model?: string | null },

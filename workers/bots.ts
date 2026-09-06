@@ -5,22 +5,22 @@
  *
  * Each org connects its own Slack / Telegram / Discord app on
  * /dashboard/integrations. The platform delivers events here; we verify the
- * signature against that org's stored secret, normalise the payload, run it
- * through the AI pipeline (`handleInbound`), and reply on the same platform.
+ * signature against that org's stored secret, dedupe retries, normalise the
+ * payload, run it through the same agent the web chat uses (`handleInbound`),
+ * and reply on the same platform.
  */
 import { Hono } from "hono";
 import { handleInbound } from "./bot-router";
 import {
 	BOT_PLATFORMS,
 	getBotIntegration,
+	markEventProcessed,
 	parseInbound,
 	resultToText,
 	sendReply,
 	verifyInbound,
 	type BotPlatform,
 } from "~/lib/bots.server";
-
-type Env = { AI: Ai; DB: D1Database };
 
 export const botRoutes = new Hono<{ Bindings: Env }>();
 
@@ -30,8 +30,8 @@ botRoutes.post("/:platform/:orgId", async (c) => {
 	if (!BOT_PLATFORMS.includes(platform)) return c.json({ error: "unknown platform" }, 404);
 
 	const raw = await c.req.text();
-	const integ = await getBotIntegration(c.env.DB, orgId, platform);
-	if (!integ) return c.json({ error: "not connected" }, 404);
+	const integ = await getBotIntegration(c.env, orgId, platform);
+	if (!integ || integ.status !== "active") return c.json({ error: "not connected" }, 404);
 
 	// Slack URL verification handshake (sent before the signature matters).
 	if (platform === "slack") {
@@ -51,21 +51,42 @@ botRoutes.post("/:platform/:orgId", async (c) => {
 	const parsed = await parseInbound(platform, body, integ).catch(() => null);
 	if (!parsed) return platform === "discord" ? c.json({ type: 5 }) : c.json({ ok: true });
 
+	// Idempotency — platforms retry; run the agent at most once per event.
+	if (!(await markEventProcessed(c.env.DB, platform, parsed.externalEventId, orgId)))
+		return platform === "discord" ? c.json({ type: 5 }) : c.json({ ok: true });
+
+	// Resolve the platform identity to an internal user (org owner for now) so
+	// the agent + tools run inside a real org/user context.
+	const owner = await c.env.DB.prepare("SELECT created_by FROM organizations WHERE id = ?")
+		.bind(orgId)
+		.first<{ created_by: string }>();
+
 	const run = (async () => {
 		try {
-			const result = await handleInbound(c.env, { source: platform, orgId, ...parsed.event });
+			const result = await handleInbound(c.env, {
+				source: platform,
+				orgId,
+				userId: owner?.created_by ?? null,
+				...parsed.event,
+			});
 			if (parsed.reply) await sendReply(integ, parsed.reply, resultToText(result.detail));
 		} catch (err) {
 			console.error(`bot ${platform}/${orgId} failed: ${err}`);
-			if (parsed.reply) await sendReply(integ, parsed.reply, "Something went wrong handling that.").catch(() => {});
+			if (parsed.reply)
+				await sendReply(integ, parsed.reply, "Something went wrong handling that.").catch(() => {});
 		}
 	})();
 
 	// Slack and Discord need an ack within 3s; do the slow work in the background.
-	c.executionCtx.waitUntil(run);
-	if (platform === "discord") return c.json({ type: 5 }); // deferred channel message
-	if (platform === "slack") return c.json({ ok: true });
-	await run; // Telegram tolerates a slow response and has no deferral concept
+	if (platform === "discord") {
+		c.executionCtx.waitUntil(run);
+		return c.json({ type: 5 }); // deferred channel message
+	}
+	if (platform === "slack") {
+		c.executionCtx.waitUntil(run);
+		return c.json({ ok: true });
+	}
+	await run; // Telegram tolerates a slow response
 	return c.json({ ok: true });
 });
 

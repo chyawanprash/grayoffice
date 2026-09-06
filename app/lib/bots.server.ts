@@ -9,6 +9,7 @@
  */
 import type { Inbound, InboundFile } from "../../workers/bot-router";
 import type { BotPlatform } from "./bots-catalog";
+import { seal, open } from "./secretbox.server";
 export { BOT_PLATFORMS, BOT_META, botWebhookUrl as webhookUrl } from "./bots-catalog";
 export type { BotPlatform } from "./bots-catalog";
 
@@ -16,14 +17,16 @@ const enc = new TextEncoder();
 
 /* ─────────────────────────────────────────────────────────── storage CRUD */
 
-type Env = { DB: D1Database; APP_URL?: string };
+type Env = { DB: D1Database; APP_URL?: string; SESSION_SECRET: string };
 
 export type BotIntegration = {
 	org_id: string;
 	platform: BotPlatform;
+	status: string;
 	bot_token: string | null;
 	signing_secret: string | null;
 	app_id: string | null;
+	workspace_name: string | null;
 	extra: Record<string, string>;
 	connected_at: number | null;
 	updated_at: number;
@@ -31,66 +34,92 @@ export type BotIntegration = {
 
 type Row = Omit<BotIntegration, "extra"> & { extra: string | null };
 
-function hydrate(r: Row): BotIntegration {
+async function hydrate(sessionSecret: string, r: Row): Promise<BotIntegration> {
 	let extra: Record<string, string> = {};
 	try {
 		extra = r.extra ? JSON.parse(r.extra) : {};
 	} catch {
 		/* ignore */
 	}
-	return { ...r, extra };
+	return {
+		...r,
+		extra,
+		bot_token: await open(sessionSecret, r.bot_token),
+		signing_secret: await open(sessionSecret, r.signing_secret),
+	};
 }
 
-export async function listBotIntegrations(db: D1Database, orgId: string): Promise<BotIntegration[]> {
-	const { results } = await db
+export async function listBotIntegrations(env: Env, orgId: string): Promise<BotIntegration[]> {
+	const { results } = await env.DB
 		.prepare("SELECT * FROM bot_integrations WHERE org_id = ?")
 		.bind(orgId)
 		.all<Row>();
-	return (results ?? []).map(hydrate);
+	return Promise.all((results ?? []).map((r) => hydrate(env.SESSION_SECRET, r)));
 }
 
 export async function getBotIntegration(
-	db: D1Database,
+	env: Env,
 	orgId: string,
 	platform: BotPlatform,
 ): Promise<BotIntegration | null> {
-	const r = await db
+	const r = await env.DB
 		.prepare("SELECT * FROM bot_integrations WHERE org_id = ? AND platform = ?")
 		.bind(orgId, platform)
 		.first<Row>();
-	return r ? hydrate(r) : null;
+	return r ? hydrate(env.SESSION_SECRET, r) : null;
 }
 
 export async function saveBotIntegration(
-	db: D1Database,
+	env: Env,
 	orgId: string,
 	platform: BotPlatform,
-	input: { bot_token?: string; signing_secret?: string; app_id?: string; extra?: Record<string, string> },
+	input: { bot_token?: string; signing_secret?: string; app_id?: string; workspace_name?: string; extra?: Record<string, string> },
 ): Promise<void> {
-	await db
+	await env.DB
 		.prepare(
-			`INSERT INTO bot_integrations (org_id, platform, bot_token, signing_secret, app_id, extra, connected_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())
+			`INSERT INTO bot_integrations (org_id, platform, status, bot_token, signing_secret, app_id, workspace_name, extra, connected_at, updated_at)
+			 VALUES (?, ?, 'active', ?, ?, ?, ?, ?, unixepoch(), unixepoch())
 			 ON CONFLICT (org_id, platform) DO UPDATE SET
+			   status         = 'active',
 			   bot_token      = COALESCE(excluded.bot_token, bot_integrations.bot_token),
 			   signing_secret = COALESCE(excluded.signing_secret, bot_integrations.signing_secret),
 			   app_id         = COALESCE(excluded.app_id, bot_integrations.app_id),
+			   workspace_name = COALESCE(excluded.workspace_name, bot_integrations.workspace_name),
 			   extra          = excluded.extra,
 			   updated_at     = unixepoch()`,
 		)
 		.bind(
 			orgId,
 			platform,
-			input.bot_token || null,
-			input.signing_secret || null,
+			await seal(env.SESSION_SECRET, input.bot_token),
+			await seal(env.SESSION_SECRET, input.signing_secret),
 			input.app_id || null,
+			input.workspace_name || null,
 			JSON.stringify(input.extra ?? {}),
 		)
 		.run();
 }
 
-export async function deleteBotIntegration(db: D1Database, orgId: string, platform: BotPlatform): Promise<void> {
-	await db.prepare("DELETE FROM bot_integrations WHERE org_id = ? AND platform = ?").bind(orgId, platform).run();
+export async function deleteBotIntegration(env: Env, orgId: string, platform: BotPlatform): Promise<void> {
+	await env.DB.prepare("DELETE FROM bot_integrations WHERE org_id = ? AND platform = ?").bind(orgId, platform).run();
+}
+
+/** True (and records it) the first time; true-with-no-effect isn't possible — retries return false-ish via the caller. */
+export async function markEventProcessed(
+	db: D1Database,
+	platform: BotPlatform,
+	eventId: string,
+	orgId: string,
+): Promise<boolean> {
+	try {
+		const res = await db
+			.prepare("INSERT OR IGNORE INTO bot_processed_events (platform, external_event_id, org_id) VALUES (?, ?, ?)")
+			.bind(platform, eventId, orgId)
+			.run();
+		return (res.meta.changes ?? 0) > 0; // false = already processed
+	} catch {
+		return true; // don't drop the message on a logging failure
+	}
 }
 
 /* ───────────────────────────────────────────────────── signature verification */
@@ -167,6 +196,10 @@ export type ReplyTarget =
 export type ParsedInbound = {
 	event: Omit<Inbound, "source">;
 	reply: ReplyTarget | null;
+	/** platform-native id used for idempotency */
+	externalEventId: string;
+	/** stable conversation key: platform:workspace:channel[:thread] */
+	conversationId: string;
 };
 
 /** Normalise a raw webhook body. Returns null for events we ignore. */
@@ -189,9 +222,12 @@ export async function parseInbound(
 			files.push({ name: f.name ?? "file.pdf", mime: "application/pdf", blob });
 		}
 		if (!text && files.length === 0) return null;
+		const thread = e.thread_ts ?? e.ts;
 		return {
 			event: { externalUser: e.user ?? null, text, files },
-			reply: { platform: "slack", channel: e.channel, thread_ts: e.thread_ts ?? e.ts },
+			reply: { platform: "slack", channel: e.channel, thread_ts: thread },
+			externalEventId: String(body.event_id ?? `${e.channel}:${e.ts}`),
+			conversationId: `slack:${body.team_id ?? "?"}:${e.channel}:${thread}`,
 		};
 	}
 
@@ -210,6 +246,8 @@ export async function parseInbound(
 		return {
 			event: { externalUser: from, text, files },
 			reply: { platform: "telegram", chat_id: m.chat.id },
+			externalEventId: String(body.update_id ?? `${m.chat.id}:${m.message_id}`),
+			conversationId: `telegram:${m.chat.id}`,
 		};
 	}
 
@@ -228,6 +266,8 @@ export async function parseInbound(
 	return {
 		event: { externalUser: user, text, files },
 		reply: { platform: "discord", app_id: body.application_id, interaction_token: body.token },
+		externalEventId: String(body.id),
+		conversationId: `discord:${body.guild_id ?? "dm"}:${body.channel_id ?? "?"}`,
 	};
 }
 
@@ -321,6 +361,47 @@ export async function setTelegramWebhook(integ: BotIntegration, url: string, sec
 export async function deleteTelegramWebhook(integ: BotIntegration): Promise<void> {
 	if (!integ.bot_token) return;
 	await fetch(`https://api.telegram.org/bot${integ.bot_token}/deleteWebhook`, { method: "POST" });
+}
+
+/* ───────────────────────────────────────── backend → platform notifications */
+
+/**
+ * Proactively send a message to a connected platform, e.g. a spend alert.
+ * `destinationId` is a Discord/Slack channel id or a Telegram chat id.
+ */
+export async function sendBotNotification(
+	env: Env,
+	opts: { orgId: string; platform: BotPlatform; destinationId: string; text: string },
+): Promise<{ ok: boolean; error?: string }> {
+	const integ = await getBotIntegration(env, opts.orgId, opts.platform);
+	if (!integ || integ.status !== "active" || !integ.bot_token)
+		return { ok: false, error: "not connected" };
+	const body = opts.text.slice(0, 3800);
+
+	try {
+		if (opts.platform === "slack") {
+			await fetch("https://slack.com/api/chat.postMessage", {
+				method: "POST",
+				headers: { "content-type": "application/json", Authorization: `Bearer ${integ.bot_token}` },
+				body: JSON.stringify({ channel: opts.destinationId, text: body }),
+			});
+		} else if (opts.platform === "telegram") {
+			await fetch(`https://api.telegram.org/bot${integ.bot_token}/sendMessage`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ chat_id: opts.destinationId, text: body }),
+			});
+		} else {
+			await fetch(`https://discord.com/api/v10/channels/${opts.destinationId}/messages`, {
+				method: "POST",
+				headers: { "content-type": "application/json", Authorization: `Bot ${integ.bot_token}` },
+				body: JSON.stringify({ content: body }),
+			});
+		}
+		return { ok: true };
+	} catch (err) {
+		return { ok: false, error: err instanceof Error ? err.message : String(err) };
+	}
 }
 
 /** A short chat-ready string from a handleInbound result. */

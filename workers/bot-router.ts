@@ -4,16 +4,17 @@
  * and updates the row. New routes = one more `case` in `dispatch`.
  */
 
-type Env = {
-	AI: Ai;
-	DB: D1Database;
-};
+import { runFinanceAgentText } from "~/lib/agent.server";
+
+// `Env` is the generated worker binding type (worker-configuration.d.ts).
 
 export type InboundFile = { name: string; url?: string; blob?: Blob; mime?: string };
 
 export type Inbound = {
 	source: "telegram" | "slack" | "discord";
 	orgId?: string | null;
+	/** internal user the platform identity maps to (org owner today) */
+	userId?: string | null;
 	externalUser: string | null;
 	text: string;
 	files: InboundFile[];
@@ -104,6 +105,16 @@ async function dispatch(env: Env, route: RouteName, msg: Inbound): Promise<unkno
 			return { results };
 		}
 		case "ask":
+			// Same agent + tools as the web chat when we know the org/user;
+			// otherwise the lightweight Workers-AI fallback.
+			if (msg.orgId && msg.userId)
+				return {
+					reply: await runFinanceAgentText(
+						env,
+						{ userId: msg.userId, orgId: msg.orgId, source: msg.source },
+						msg.text,
+					),
+				};
 			return askAgent(env, msg);
 		case "unhandled":
 			return { note: "No route matched. Add a case in bot-router.ts dispatch()." };
