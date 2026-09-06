@@ -7,6 +7,7 @@ import { listMembers } from "./org.server";
 import { listIntegrations, recentEvents, fetchResource, PROVIDER_IDS, type Provider } from "./payments.server";
 import { getOrgBank, getBankSummary, bankAction } from "./bank.server";
 import { searchKb } from "./kb.server";
+import { getExtract, listDocumentsForAgent } from "./docs.server";
 
 /**
  * The Gray Office finance agent. Uses OpenAI (gpt-5.6-luna by default) when
@@ -40,8 +41,9 @@ bank account and its transactions, and the uploaded knowledge base.
 - Call recallMemory before answering questions about the user's own setup;
   call saveMemory when they tell you something durable (entities, close
   cadence, thresholds, preferences).
-- Search the knowledge base when a question might be answered by an uploaded
-  document.
+- Search the knowledge base for prose/passages from uploaded documents.
+- Use listDocuments / getDocument to pull structured fields (amounts, dates,
+  line items, GSTINs, account numbers) from extracted PDFs as context.
 - MOVING MONEY: bankCredit / bankDebit / bankTransfer change real balances.
   NEVER call them with confirmed=true until the user has explicitly approved
   that exact amount and destination in this conversation. First reply with a
@@ -152,6 +154,28 @@ export function createFinanceAgent(
 							})),
 						},
 					};
+				},
+			}),
+
+			listDocuments: tool({
+				description:
+					"List the org's uploaded PDFs that have been extracted to structured JSON (invoices, POs, GRNs, statements, receipts, tax docs) - id, type and a one-line summary each.",
+				inputSchema: z.object({}),
+				execute: async () => ({ documents: await listDocumentsForAgent(env.DB, orgId) }),
+			}),
+			getDocument: tool({
+				description:
+					"Get the full extracted JSON ({ document_type, summary, data }) for one uploaded document by its id (from listDocuments).",
+				inputSchema: z.object({ id: z.string() }),
+				execute: async ({ id }) => {
+					const row = await getExtract(env.DB, orgId, id);
+					if (!row) return { error: "not found" };
+					if (row.status !== "ready") return { status: row.status, error: row.error };
+					try {
+						return { name: row.name, doc_type: row.doc_type, extracted: JSON.parse(row.json ?? "{}") };
+					} catch {
+						return { name: row.name, doc_type: row.doc_type, extracted: row.json };
+					}
 				},
 			}),
 

@@ -63,6 +63,7 @@ export const navigationGroups: NavigationGroup[] = [
     items: [
       { name: 'AI Assistant', href: '/assistant', icon: Icons.SparkleIcon },
       { name: 'Knowledge base', href: '/knowledge', icon: BookOpenIcon },
+      { name: 'Documents', href: '/documents', icon: Icons.FileArrowUpIcon },
     ],
   },
   {

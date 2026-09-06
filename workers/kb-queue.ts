@@ -4,8 +4,11 @@
  * the upload route, add R2 if bigger docs appear).
  */
 import { ingestPdf } from "~/lib/kb.server";
+import { extractPdf } from "~/lib/docs.server";
 
 export type KbJob = {
+	/** "kb" (default) = chunk + embed into Pinecone; "extract" = PDF -> JSON */
+	kind?: "kb" | "extract";
 	orgId: string;
 	docId: string;
 	name: string;
@@ -25,11 +28,13 @@ export async function kbQueueConsumer(
 ): Promise<void> {
 	for (const msg of batch.messages) {
 		try {
-			const { orgId, docId, name, dataB64 } = msg.body;
-			await ingestPdf(env, orgId, docId, name, b64ToBytes(dataB64));
+			const { kind, orgId, docId, name, dataB64 } = msg.body;
+			const bytes = b64ToBytes(dataB64);
+			if (kind === "extract") await extractPdf(env, docId, name, bytes);
+			else await ingestPdf(env, orgId, docId, name, bytes);
 			msg.ack();
 		} catch (err) {
-			console.error(`KB ingest failed: ${err}`);
+			console.error(`KB queue job failed: ${err}`);
 			msg.retry();
 		}
 	}
