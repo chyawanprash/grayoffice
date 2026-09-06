@@ -23,7 +23,7 @@ function dataUrlToBytes(url: string): ArrayBuffer | null {
 export async function action({ request, context }: Route.ActionArgs) {
 	const env = context.cloudflare.env;
 	const userId = await requireUserId(request, env.SESSION_SECRET);
-	const { orgId } = await requireOrg(request, env);
+	const { orgId, org } = await requireOrg(request, env);
 
 	const body = (await request.json()) as { messages: Msg[] };
 	const messages = body.messages ?? [];
@@ -66,7 +66,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	}
 
 	return createAgentUIStreamResponse({
-		agent: createFinanceAgent(env, { userId, orgId }),
+		agent: createFinanceAgent(env, { userId, orgId, model: org.agent_model }),
 		uiMessages: messages,
 	});
 }

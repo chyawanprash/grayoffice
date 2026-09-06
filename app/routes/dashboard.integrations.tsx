@@ -147,7 +147,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 	return (
 		<div className="mx-auto max-w-5xl p-1">
 			<div className="mb-6">
-				<h1 className="text-xl font-semibold tracking-tight text-foreground">
+				<h1 className="text-2xl font-normal text-foreground">
 					Integrations
 				</h1>
 				<p className="text-sm text-muted-foreground">
@@ -158,7 +158,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 			</div>
 
 			{/* Ingest endpoint */}
-			<section className="mb-6 rounded-xl border border-border bg-surface p-4">
+			<section className="mb-6 rounded-xl border border-border bg-card p-4">
 				<div className="mb-3 flex items-center justify-between gap-3">
 					<h2 className="text-sm font-medium text-foreground">Ingest endpoint</h2>
 					<div className="flex items-center gap-3 text-xs">
@@ -173,7 +173,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					<code className="min-w-0 flex-1 truncate rounded-lg bg-tint px-3 py-2 font-mono text-xs text-foreground">
+					<code className="min-w-0 flex-1 truncate rounded-lg bg-muted px-3 py-2 font-mono text-xs text-foreground">
 						POST {ingestUrl || "<APP_URL>/api/bots/ingest"}
 					</code>
 					<CopyButton value={ingestUrl} />
@@ -195,7 +195,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 					return (
 						<div
 							key={c.source}
-							className="flex flex-col rounded-xl border border-border bg-surface p-4"
+							className="flex flex-col rounded-xl border border-border bg-card p-4"
 						>
 							<div className="mb-2 flex items-center justify-between">
 								<span className={`grid size-9 place-items-center rounded-lg ${c.tint}`}>
@@ -204,7 +204,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 								<span
 									className={`rounded-md px-2 py-0.5 text-xs font-medium ${
 										connected
-											? "bg-emerald-100 text-emerald-700"
+											? "bg-[color-mix(in_oklch,var(--dashboard-completed)_16%,transparent)] text-[var(--dashboard-completed)]"
 											: "bg-neutral-100 text-neutral-600"
 									}`}
 								>
@@ -236,7 +236,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 								{c.env.map((e) => (
 									<code
 										key={e}
-										className="rounded bg-tint px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+										className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
 									>
 										{e}
 									</code>
@@ -265,7 +265,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 			</div>
 
 			{/* Pipeline test */}
-			<section className="mt-6 rounded-xl border border-border bg-surface p-4">
+			<section className="mt-6 rounded-xl border border-border bg-card p-4">
 				<h2 className="text-sm font-medium text-foreground">Test the pipeline</h2>
 				<p className="mt-1 text-xs text-muted-foreground">
 					POSTs to <code className="font-mono">/api/bots/ingest</code> exactly
@@ -313,7 +313,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 					</p>
 				)}
 				{test?.result && (
-					<div className="mt-3 rounded-lg bg-tint p-3 text-xs">
+					<div className="mt-3 rounded-lg bg-muted p-3 text-xs">
 						<div className="mb-1 flex gap-3 text-muted-foreground">
 							<span>
 								route: <b className="text-foreground">{test.result.route}</b>
@@ -338,7 +338,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 
 function Metric({ label, value }: { label: string; value: string | number }) {
 	return (
-		<div className="rounded-lg bg-tint py-1.5">
+		<div className="rounded-lg bg-muted py-1.5">
 			<div className="text-sm font-semibold text-foreground">{value}</div>
 			<div className="text-[10px] uppercase tracking-wide text-muted-foreground">
 				{label}

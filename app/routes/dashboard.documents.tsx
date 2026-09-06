@@ -50,9 +50,9 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 const badge: Record<string, string> = {
-	processing: "bg-amber-100 text-amber-700",
-	ready: "bg-emerald-100 text-emerald-700",
-	error: "bg-red-100 text-red-700",
+	processing: "bg-[color-mix(in_oklch,var(--dashboard-no-show)_16%,transparent)] text-[var(--dashboard-no-show)]",
+	ready: "bg-[color-mix(in_oklch,var(--dashboard-completed)_16%,transparent)] text-[var(--dashboard-completed)]",
+	error: "bg-[color-mix(in_oklch,var(--destructive)_16%,transparent)] text-destructive",
 };
 
 function pretty(json: string | null): string {
@@ -81,7 +81,7 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 	return (
 		<div className="mx-auto max-w-4xl p-4 md:p-6">
 			<div className="mb-6">
-				<h1 className="text-xl font-semibold tracking-tight text-foreground">Documents</h1>
+				<h1 className="text-2xl font-normal text-foreground">Documents</h1>
 				<p className="text-sm text-muted-foreground">
 					Upload up to {MAX_FILES} PDFs. Each is converted to structured JSON
 					(invoice / PO / statement / receipt fields + line items) that the
@@ -90,16 +90,16 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 			</div>
 
 			{actionData && "error" in actionData && actionData.error && (
-				<p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{actionData.error}</p>
+				<p className="mb-4 rounded-lg border border-destructive/30 bg-[color-mix(in_oklch,var(--destructive)_10%,transparent)] px-3 py-2 text-sm text-destructive">{actionData.error}</p>
 			)}
 			{actionData && "ok" in actionData && actionData.ok === "queued" && (
-				<p className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+				<p className="mb-4 rounded-lg border border-[var(--dashboard-completed)]/30 bg-[color-mix(in_oklch,var(--dashboard-completed)_10%,transparent)] px-3 py-2 text-sm text-[var(--dashboard-completed)]">
 					{actionData.queued} file(s) queued for extraction.
 					{actionData.skipped.length > 0 && ` Skipped (not a PDF / too large): ${actionData.skipped.join(", ")}`}
 				</p>
 			)}
 
-			<section className="rounded-xl border border-border bg-surface p-4">
+			<section className="rounded-xl border border-border bg-card p-4">
 				<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
 					<input
 						type="file"
@@ -115,7 +115,7 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 				</Form>
 			</section>
 
-			<section className="mt-4 rounded-xl border border-border bg-surface p-4">
+			<section className="mt-4 rounded-xl border border-border bg-card p-4">
 				<h2 className="mb-3 text-sm font-medium text-foreground">Extracted documents ({docs.length})</h2>
 				<ul className="divide-y divide-border/60 text-sm">
 					{docs.map((d) => (
@@ -149,7 +149,7 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 								</div>
 							</div>
 							{open === d.id && d.status === "ready" && (
-								<pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-tint p-3 text-xs text-foreground">
+								<pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-muted p-3 text-xs text-foreground">
 									{pretty(d.json)}
 								</pre>
 							)}

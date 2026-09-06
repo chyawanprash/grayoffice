@@ -9,7 +9,9 @@ import {
 	listPendingInvites,
 	renameOrg,
 	requireOrg,
+	setAgentModel,
 } from "~/lib/org.server";
+import { AGENT_MODELS, availableAgentModels } from "~/lib/agent.server";
 
 export function meta() {
 	return [{ title: "Organization | Gray Office" }];
@@ -18,11 +20,13 @@ export function meta() {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const env = context.cloudflare.env;
 	const { orgId, role, org } = await requireOrg(request, env);
+	const available = availableAgentModels(env);
 	return {
 		org,
 		role,
 		members: await listMembers(env.DB, orgId),
 		invites: await listPendingInvites(env.DB, orgId),
+		models: AGENT_MODELS.map((m) => ({ id: m.id, label: m.label, ready: available.includes(m.id) })),
 	};
 }
 
@@ -40,6 +44,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 		const me = await getUser(env.DB, userId);
 		await createInvite(env.DB, env, orgId, org.name, me?.name ?? me?.email ?? "A teammate", email);
 		return { ok: "invited" as const };
+	}
+
+	if (intent === "model") {
+		if (role === "member") return { error: "Only an owner or admin can change the assistant model." };
+		const model = String(form.get("model") ?? "");
+		await setAgentModel(env.DB, orgId, AGENT_MODELS.some((m) => m.id === model) ? model : null);
+		return { ok: "model" as const };
 	}
 
 	if (intent === "rename") {
@@ -62,7 +73,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 const card = "rounded-xl bg-card p-4 text-card-foreground";
 
 export default function Organization({ loaderData, actionData }: Route.ComponentProps) {
-	const { org, role, members, invites } = loaderData;
+	const { org, role, members, invites, models } = loaderData;
 	const nav = useNavigation();
 	const busy = nav.state !== "idle";
 	const err = actionData && "error" in actionData ? actionData.error : null;
@@ -79,6 +90,43 @@ export default function Organization({ loaderData, actionData }: Route.Component
 			{err && <p className="text-sm text-destructive">{err}</p>}
 
 			<div className="grid gap-3 lg:max-w-3xl">
+				<section className={card}>
+					<h2 className="text-lg font-medium">Finance assistant model</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Which LLM powers the assistant for everyone in {org.name}.
+					</p>
+					<Form method="post" className="mt-3 flex flex-wrap items-end gap-2">
+						<input type="hidden" name="intent" value="model" />
+						<select
+							name="model"
+							defaultValue={org.agent_model ?? models[0]?.id ?? ""}
+							disabled={role === "member"}
+							className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+						>
+							{models.map((m) => (
+								<option key={m.id} value={m.id}>
+									{m.label}
+									{m.ready ? "" : " — key not set"}
+								</option>
+							))}
+						</select>
+						{role !== "member" && (
+							<Button type="submit" size="sm" variant="outline" disabled={busy}>
+								Save
+							</Button>
+						)}
+						{actionData && "ok" in actionData && actionData.ok === "model" && (
+							<span className="pb-1.5 text-sm text-[var(--dashboard-completed)]">Saved.</span>
+						)}
+					</Form>
+					{models.every((m) => !m.ready) && (
+						<p className="mt-2 text-xs text-[var(--dashboard-no-show)]">
+							No provider key is configured yet — the assistant runs on the
+							Workers AI fallback until one is added.
+						</p>
+					)}
+				</section>
+
 				<section className={card}>
 					<h2 className="text-lg font-medium">Members ({members.length})</h2>
 					<ul className="mt-3 divide-y divide-border/60 text-sm">

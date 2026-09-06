@@ -1,6 +1,7 @@
 import { ToolLoopAgent, tool, type LanguageModel } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
 import { recall, remember } from "./pinecone.server";
 import { listMembers } from "./org.server";
@@ -10,22 +11,47 @@ import { searchKb } from "./kb.server";
 import { getExtract, listDocumentsForAgent, queueExtraction } from "./docs.server";
 
 /**
- * The Gray Office finance agent. Uses OpenAI (gpt-5.6-luna by default) when
- * OPENAI_API_KEY is set, otherwise falls back to Workers AI so it still runs
- * without any keys. Pinecone is long-term memory. The agent can read every
- * entity in the caller's organization - members, payment integrations + live
- * data, the audit log, the connected bank account, and the knowledge base -
- * and can move money on the bank account, but only after the user confirms the
- * exact amount and destination.
+ * The Gray Office finance agent. The model is per-organization (chosen on the
+ * Organization page); each choice needs its provider key set. Falls back to
+ * Workers AI so it still runs with no keys. Pinecone is long-term memory. The
+ * agent can read every entity in the caller's org and move money on the bank
+ * account after in-chat confirmation.
  */
-const OPENAI_MODEL_DEFAULT = "gpt-5.6-luna";
 const WORKERS_AI_MODEL = "@cf/moonshotai/kimi-k2.7-code"; // fallback: tools + 256k ctx
 
-function resolveModel(env: Env): LanguageModel {
-	if (env.OPENAI_API_KEY) {
-		const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
-		return openai(env.OPENAI_MODEL || OPENAI_MODEL_DEFAULT);
+export type AgentModelId = "gpt-5.6-luna" | "gemini-3.8-flash";
+
+export const AGENT_MODELS: {
+	id: AgentModelId;
+	label: string;
+	provider: "openai" | "google";
+	keyVar: "OPENAI_API_KEY" | "GOOGLE_AI_API_KEY";
+}[] = [
+	{ id: "gpt-5.6-luna", label: "GPT-5.6 Luna (OpenAI)", provider: "openai", keyVar: "OPENAI_API_KEY" },
+	{ id: "gemini-3.8-flash", label: "Gemini 3.8 Flash (Google)", provider: "google", keyVar: "GOOGLE_AI_API_KEY" },
+];
+
+const DEFAULT_MODEL: AgentModelId = "gpt-5.6-luna";
+
+/** Which configured models this deployment can actually run (key present). */
+export function availableAgentModels(env: Env): AgentModelId[] {
+	return AGENT_MODELS.filter((m) => env[m.keyVar]).map((m) => m.id);
+}
+
+function resolveModel(env: Env, preferred?: string | null): LanguageModel {
+	const wanted = (AGENT_MODELS.find((m) => m.id === preferred)?.id ?? DEFAULT_MODEL) as AgentModelId;
+	const spec = AGENT_MODELS.find((m) => m.id === wanted)!;
+
+	if (spec.provider === "openai" && env.OPENAI_API_KEY) {
+		return createOpenAI({ apiKey: env.OPENAI_API_KEY })(spec.id);
 	}
+	if (spec.provider === "google" && env.GOOGLE_AI_API_KEY) {
+		return createGoogleGenerativeAI({ apiKey: env.GOOGLE_AI_API_KEY })(spec.id);
+	}
+	// Requested model's key is missing - try the other provider, then Workers AI.
+	if (env.OPENAI_API_KEY) return createOpenAI({ apiKey: env.OPENAI_API_KEY })("gpt-5.6-luna");
+	if (env.GOOGLE_AI_API_KEY)
+		return createGoogleGenerativeAI({ apiKey: env.GOOGLE_AI_API_KEY })("gemini-3.8-flash");
 	return createWorkersAI({ binding: env.AI })(WORKERS_AI_MODEL);
 }
 
@@ -122,12 +148,12 @@ type AgentEnv = Env;
 
 export function createFinanceAgent(
 	env: AgentEnv,
-	{ userId, orgId }: { userId: string; orgId: string },
+	{ userId, orgId, model }: { userId: string; orgId: string; model?: string | null },
 ) {
 	const bank = () => getOrgBank(env.DB, orgId);
 
 	return new ToolLoopAgent({
-		model: resolveModel(env),
+		model: resolveModel(env, model),
 		instructions: INSTRUCTIONS,
 		tools: {
 			recallMemory: tool({

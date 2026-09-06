@@ -35,10 +35,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-	received: "bg-neutral-100 text-neutral-600",
-	routed: "bg-amber-100 text-amber-700",
-	done: "bg-emerald-100 text-emerald-700",
-	error: "bg-red-100 text-red-700",
+	received: "bg-muted text-muted-foreground",
+	routed: "bg-[color-mix(in_oklch,var(--dashboard-no-show)_16%,transparent)] text-[var(--dashboard-no-show)]",
+	done: "bg-[color-mix(in_oklch,var(--dashboard-completed)_16%,transparent)] text-[var(--dashboard-completed)]",
+	error: "bg-[color-mix(in_oklch,var(--destructive)_16%,transparent)] text-destructive",
 };
 
 export default function AuditRoom({ loaderData }: Route.ComponentProps) {
@@ -49,10 +49,10 @@ export default function AuditRoom({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="mx-auto max-w-6xl">
 			<div className="mb-4">
-				<h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+				<h1 className="text-2xl font-normal text-foreground">
 					Audit room
 				</h1>
-				<p className="text-sm text-neutral-500">
+				<p className="text-sm text-muted-foreground">
 					Every message and file the Slack, Telegram and Discord bots received,
 					and how it was routed.
 				</p>
@@ -67,7 +67,7 @@ export default function AuditRoom({ loaderData }: Route.ComponentProps) {
 						className={`rounded-lg px-3 py-1.5 text-sm capitalize transition-colors ${
 							active === val
 								? "bg-brand-tint font-medium text-brand"
-								: "text-neutral-600 hover:bg-tint"
+								: "text-muted-foreground hover:bg-muted"
 						}`}
 					>
 						{label}
@@ -75,9 +75,9 @@ export default function AuditRoom({ loaderData }: Route.ComponentProps) {
 				))}
 			</Form>
 
-			<div className="overflow-x-auto rounded-xl border border-neutral-200 bg-surface">
+			<div className="overflow-x-auto rounded-xl border border-border bg-card">
 				<table className="w-full text-sm">
-					<thead className="border-b border-neutral-200 text-left text-xs uppercase text-neutral-400">
+					<thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
 						<tr>
 							<th className="px-4 py-2.5 font-medium">When</th>
 							<th className="px-4 py-2.5 font-medium">Source</th>
@@ -90,31 +90,31 @@ export default function AuditRoom({ loaderData }: Route.ComponentProps) {
 					<tbody className="divide-y divide-neutral-100">
 						{events.length === 0 && (
 							<tr>
-								<td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+								<td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
 									No bot activity yet.
 								</td>
 							</tr>
 						)}
 						{events.map((e) => (
 							<tr key={e.id} className="align-top">
-								<td className="whitespace-nowrap px-4 py-3 text-neutral-500">
+								<td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
 									{new Date(e.created_at * 1000).toLocaleString()}
 								</td>
-								<td className="px-4 py-3 capitalize text-neutral-700">{e.source}</td>
-								<td className="px-4 py-3 text-neutral-600">{e.external_user ?? "-"}</td>
-								<td className="max-w-md px-4 py-3 text-neutral-800">
+								<td className="px-4 py-3 capitalize text-muted-foreground">{e.source}</td>
+								<td className="px-4 py-3 text-muted-foreground">{e.external_user ?? "-"}</td>
+								<td className="max-w-md px-4 py-3 text-foreground">
 									{e.summary}
 									{e.status === "error" && e.detail && (
-										<span className="mt-0.5 block text-xs text-red-600">
+										<span className="mt-0.5 block text-xs text-destructive">
 											{safeError(e.detail)}
 										</span>
 									)}
 								</td>
-								<td className="px-4 py-3 text-neutral-600">{e.route ?? "-"}</td>
+								<td className="px-4 py-3 text-muted-foreground">{e.route ?? "-"}</td>
 								<td className="px-4 py-3">
 									<span
 										className={`rounded-md px-2 py-0.5 text-xs font-medium ${
-											STATUS_STYLE[e.status] ?? "bg-neutral-100 text-neutral-600"
+											STATUS_STYLE[e.status] ?? "bg-muted text-muted-foreground"
 										}`}
 									>
 										{e.status}

@@ -113,7 +113,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	}
 }
 
-const card = "rounded-xl border border-border bg-surface p-4";
+const card = "rounded-xl border border-border bg-card p-4";
 const field =
 	"h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring";
 const inr = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
@@ -126,7 +126,7 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 	return (
 		<div className="mx-auto max-w-4xl p-4 md:p-6">
 			<div className="mb-6">
-				<h1 className="text-xl font-semibold tracking-tight text-foreground">Banking</h1>
+				<h1 className="text-2xl font-normal text-foreground">Banking</h1>
 				<p className="text-sm text-muted-foreground">
 					A live account on bank.grayoffice.app. Trigger real credits, debits,
 					transfers and subscriptions against it.
@@ -134,10 +134,10 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 			</div>
 
 			{err && (
-				<p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>
+				<p className="mb-4 rounded-lg border border-destructive/30 bg-[color-mix(in_oklch,var(--destructive)_10%,transparent)] px-3 py-2 text-sm text-destructive">{err}</p>
 			)}
 			{"bankError" in loaderData && loaderData.bankError && (
-				<p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+				<p className="mb-4 rounded-lg border border-[var(--dashboard-no-show)]/30 bg-[color-mix(in_oklch,var(--dashboard-no-show)_10%,transparent)] px-3 py-2 text-sm text-[var(--dashboard-no-show)]">
 					Bank unreachable: {loaderData.bankError}
 				</p>
 			)}
@@ -241,7 +241,7 @@ export default function Banking({ loaderData, actionData }: Route.ComponentProps
 												{new Date(t.created_at).toLocaleString()}
 											</td>
 											<td className="py-2 pr-3">{t.description}</td>
-											<td className={`py-2 pr-3 text-right ${t.type === "credit" ? "text-emerald-600" : "text-red-600"}`}>
+											<td className={`py-2 pr-3 text-right ${t.type === "credit" ? "text-[var(--dashboard-completed)]" : "text-destructive"}`}>
 												{t.type === "credit" ? "+" : "−"}{inr(t.amount)}
 											</td>
 											<td className="py-2 text-right text-muted-foreground">{inr(t.balance_after)}</td>
