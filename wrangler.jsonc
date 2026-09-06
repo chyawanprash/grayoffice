@@ -2,10 +2,17 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "ai-brand-visibility-template",
 	"compatibility_date": "2025-10-08",
+	"compatibility_flags": ["nodejs_compat"],
 	"main": "./workers/app.ts",
 	"upload_source_maps": true,
 	"observability": {
 		"enabled": true
+	},
+	// Non-secret vars. Secrets (SESSION_SECRET, GOOGLE_CLIENT_ID,
+	// GOOGLE_CLIENT_SECRET, RESEND_API_KEY) are set with `wrangler secret put`.
+	"vars": {
+		"APP_URL": "https://grayoffice.example.com",
+		"RESEND_FROM": "Gray Office <login@example.com>"
 	},
 	"ai": {
 		"binding": "AI",

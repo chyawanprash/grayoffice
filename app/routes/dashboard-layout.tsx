@@ -64,8 +64,14 @@ export default function DashboardLayout({
 					))}
 				</nav>
 				<NavLink
-					to="/dashboard#settings"
-					className="mt-auto flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-neutral-600 transition-colors hover:bg-tint hover:text-neutral-900"
+					to="/dashboard/settings"
+					className={({ isActive }) =>
+						`mt-auto flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+							isActive
+								? "bg-brand-tint font-medium text-brand"
+								: "text-neutral-600 hover:bg-tint hover:text-neutral-900"
+						}`
+					}
 				>
 					<Gear size={17} weight="duotone" />
 					Settings

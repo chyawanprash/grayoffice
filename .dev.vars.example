@@ -1,0 +1,17 @@
+# Copy to .dev.vars and fill in. .dev.vars is gitignored.
+# Production values are set with `wrangler secret put <NAME>`.
+
+# Cookie signing secret — any long random string
+SESSION_SECRET="dev-session-secret-change-me"
+
+# Public base URL of the app (used to build OAuth redirect + email links)
+APP_URL="http://localhost:5173"
+
+# Google OAuth — https://console.cloud.google.com/apis/credentials
+# Authorized redirect URI must be: <APP_URL>/auth/google/callback
+GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+# Resend — https://resend.com/api-keys
+RESEND_API_KEY="re_your_api_key"
+RESEND_FROM="Gray Office <login@yourdomain.com>"

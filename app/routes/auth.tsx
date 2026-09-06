@@ -1,15 +1,17 @@
 import { Form, Link, redirect, useNavigation } from "react-router";
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft, GoogleLogo } from "@phosphor-icons/react";
 import { Logo } from "~/components/brand";
 import { Button } from "~/components/ui/button";
 import type { Route } from "./+types/auth";
 import {
+	createPendingMfaSession,
 	createUser,
 	createUserSession,
 	findUserByEmail,
 	getUserId,
 	verifyPassword,
 } from "~/lib/auth.server";
+import { googleConfigured } from "~/lib/google.server";
 
 export function meta() {
 	return [{ title: "Sign in — Gray Office" }];
@@ -18,7 +20,7 @@ export function meta() {
 export async function loader({ request, context }: Route.LoaderArgs) {
 	const { SESSION_SECRET } = context.cloudflare.env;
 	if (await getUserId(request, SESSION_SECRET)) throw redirect("/dashboard");
-	return null;
+	return { google: googleConfigured(context.cloudflare.env) };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -36,8 +38,12 @@ export async function action({ request, context }: Route.ActionArgs) {
 
 	const existing = await findUserByEmail(DB, email);
 	if (existing) {
+		if (!existing.password_hash)
+			return { error: "This account uses Google sign-in. Continue with Google." };
 		if (!(await verifyPassword(password, existing.password_hash)))
 			return { error: "Wrong email or password." };
+		if (existing.totp_enabled)
+			return createPendingMfaSession(SESSION_SECRET, existing.id, "/dashboard");
 		return createUserSession(SESSION_SECRET, existing.id, "/dashboard");
 	}
 
@@ -45,7 +51,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	return createUserSession(SESSION_SECRET, user.id, "/dashboard");
 }
 
-export default function Auth({ actionData }: Route.ComponentProps) {
+export default function Auth({ actionData, loaderData }: Route.ComponentProps) {
 	const nav = useNavigation();
 	const busy = nav.state !== "idle";
 
@@ -130,6 +136,22 @@ export default function Auth({ actionData }: Route.ComponentProps) {
 						Enter your email and password. New here? An account is created on
 						your first sign in.
 					</p>
+
+					{loaderData?.google && (
+						<>
+							<a
+								href="/auth/google"
+								className="mt-6 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-surface text-sm font-medium text-neutral-800 transition-colors hover:bg-tint"
+							>
+								<GoogleLogo size={17} weight="bold" /> Continue with Google
+							</a>
+							<div className="my-4 flex items-center gap-3 text-xs text-neutral-400">
+								<span className="h-px flex-1 bg-neutral-200" />
+								or
+								<span className="h-px flex-1 bg-neutral-200" />
+							</div>
+						</>
+					)}
 
 					<Form method="post" className="mt-6 space-y-3">
 						<label className="block text-sm font-medium text-neutral-700">
