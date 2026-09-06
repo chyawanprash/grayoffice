@@ -31,6 +31,7 @@ export default [
 		route("dashboard/documents", "routes/dashboard.documents.tsx"),
 		route("dashboard/invoices", "routes/dashboard.invoices.tsx"),
 		route("dashboard/agent-model", "routes/dashboard.agent-model.tsx"),
+		route("dashboard/downloads", "routes/dashboard.downloads.tsx"),
 		route("dashboard/integrations", "routes/dashboard.integrations.tsx"),
 		route(
 			"dashboard/integrations/payments",

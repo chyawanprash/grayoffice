@@ -96,19 +96,29 @@ export default function KnowledgeBase({ loaderData, actionData }: Route.Componen
 			)}
 
 			<section className="rounded-xl border border-border bg-card p-4">
-				<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
-					<input
-						type="file"
-						name="files"
-						accept="application/pdf"
-						multiple
-						required
-						className="text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
-					/>
-					<Button type="submit" size="sm" disabled={busy}>
-						{busy ? "Uploading…" : "Upload"}
-					</Button>
-				</Form>
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
+						<input
+							type="file"
+							name="files"
+							accept="application/pdf"
+							multiple
+							required
+							className="text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+						/>
+						<Button type="submit" size="sm" disabled={busy}>
+							{busy ? "Uploading…" : "Upload"}
+						</Button>
+					</Form>
+					{docs.some((d) => d.status === "ready") && (
+						<a
+							href="/dashboard/downloads?kbdocs=all"
+							className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted"
+						>
+							Download all files (.zip)
+						</a>
+					)}
+				</div>
 			</section>
 
 			<section className="mt-4 rounded-xl border border-border bg-card p-4">
@@ -124,17 +134,17 @@ export default function KnowledgeBase({ loaderData, actionData }: Route.Componen
 									{d.status === "ready" ? `${d.chunks} chunks` : d.status === "error" ? d.error : "Processing…"}
 								</div>
 							</div>
-							<div className="flex shrink-0 items-center gap-2">
-								<span className={`rounded-md px-2 py-0.5 text-xs font-medium ${badge[d.status] ?? ""}`}>
+							<div className="flex shrink-0 items-center gap-2.5 text-xs">
+								<span className={`rounded-md px-2 py-0.5 font-medium ${badge[d.status] ?? ""}`}>
 									{d.status}
 								</span>
+								<a href={`/dashboard/downloads?kb=${d.id}`} className="font-medium text-brand hover:underline">
+									PDF
+								</a>
 								<Form method="post">
 									<input type="hidden" name="intent" value="delete" />
 									<input type="hidden" name="docId" value={d.id} />
-									<button
-										type="submit"
-										className="text-xs text-muted-foreground hover:text-destructive"
-									>
+									<button type="submit" className="text-muted-foreground hover:text-destructive">
 										Delete
 									</button>
 								</Form>

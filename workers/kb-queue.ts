@@ -3,7 +3,7 @@
  * live in R2 (queue messages max out at 128 KB); the message carries the key.
  */
 import { ingestPdf } from "~/lib/kb.server";
-import { extractPdf, readStaged, discardStaged } from "~/lib/docs.server";
+import { extractPdf, readStaged } from "~/lib/docs.server";
 
 export type KbJob = {
 	/** "kb" (default) = chunk + embed into Pinecone; "extract" = PDF -> JSON */
@@ -33,7 +33,8 @@ export async function kbQueueConsumer(
 			if (!bytes) throw new Error(`upload ${r2Key} not found in R2`);
 			if (kind === "extract") await extractPdf(env, docId, name, bytes);
 			else await ingestPdf(env, orgId, docId, name, bytes);
-			await discardStaged(env.DOCS_BUCKET, r2Key);
+			// keep the original file in R2 so it can be downloaded later; it's
+			// removed when the document row is deleted.
 			msg.ack();
 		} catch (err) {
 			console.error(`KB queue job failed (${r2Key}): ${err}`);

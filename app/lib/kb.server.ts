@@ -12,7 +12,7 @@ import {
 	queryNamespace,
 	upsertChunks,
 } from "./pinecone.server";
-import { stageUpload } from "./docs.server";
+import { stageUpload, readStaged, discardStaged } from "./docs.server";
 
 type Env = { AI: Ai; DB: D1Database; PINECONE_API_KEY?: string; PINECONE_HOST?: string };
 type QueueEnv = Env & { KB_QUEUE: Queue; DOCS_BUCKET: R2Bucket };
@@ -101,19 +101,31 @@ export async function queueKbIngest(
 	const safeName = name.slice(0, 200);
 	const r2Key = await stageUpload(env.DOCS_BUCKET, bytes);
 	await env.DB.prepare(
-		"INSERT INTO kb_documents (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
+		"INSERT INTO kb_documents (id, org_id, name, size, status, r2_key) VALUES (?, ?, ?, ?, 'processing', ?)",
 	)
-		.bind(docId, orgId, safeName, bytes.byteLength)
+		.bind(docId, orgId, safeName, bytes.byteLength, r2Key)
 		.run();
 	await env.KB_QUEUE.send({ kind: "kb", orgId, docId, name: safeName, r2Key });
 	return docId;
 }
 
-export async function deleteDoc(env: Env, orgId: string, docId: string): Promise<void> {
+export async function deleteDoc(env: QueueEnv, orgId: string, docId: string): Promise<void> {
 	await deleteByFilter(env, ns(orgId), { doc_id: docId });
-	await env.DB.prepare("DELETE FROM kb_documents WHERE id = ? AND org_id = ?")
-		.bind(docId, orgId)
-		.run();
+	const row = await env.DB.prepare("SELECT r2_key FROM kb_documents WHERE id = ? AND org_id = ?").bind(docId, orgId).first<{ r2_key: string | null }>();
+	if (row?.r2_key) await discardStaged(env.DOCS_BUCKET, row.r2_key);
+	await env.DB.prepare("DELETE FROM kb_documents WHERE id = ? AND org_id = ?").bind(docId, orgId).run();
+}
+
+/** The stored original PDF for a KB document. */
+export async function readKbPdf(
+	env: QueueEnv,
+	orgId: string,
+	docId: string,
+): Promise<{ name: string; bytes: ArrayBuffer } | null> {
+	const row = await env.DB.prepare("SELECT name, r2_key FROM kb_documents WHERE id = ? AND org_id = ?").bind(docId, orgId).first<{ name: string; r2_key: string | null }>();
+	if (!row?.r2_key) return null;
+	const bytes = await readStaged(env.DOCS_BUCKET, row.r2_key);
+	return bytes ? { name: row.name, bytes } : null;
 }
 
 /** Relevant passages from the org's knowledge base. */

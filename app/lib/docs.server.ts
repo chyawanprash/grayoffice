@@ -65,8 +65,39 @@ export function getExtract(db: D1Database, orgId: string, id: string): Promise<D
 		.first<DocExtract>();
 }
 
-export async function deleteExtract(db: D1Database, orgId: string, id: string): Promise<void> {
-	await db.prepare("DELETE FROM doc_extracts WHERE id = ? AND org_id = ?").bind(id, orgId).run();
+export async function deleteExtract(env: QueueEnv, orgId: string, id: string): Promise<void> {
+	const row = await env.DB.prepare("SELECT r2_key FROM doc_extracts WHERE id = ? AND org_id = ?").bind(id, orgId).first<{ r2_key: string | null }>();
+	if (row?.r2_key) await discardStaged(env.DOCS_BUCKET, row.r2_key);
+	await env.DB.prepare("DELETE FROM doc_extracts WHERE id = ? AND org_id = ?").bind(id, orgId).run();
+}
+
+/** The stored original PDF for a document, or null. */
+export async function readExtractPdf(
+	env: QueueEnv,
+	orgId: string,
+	id: string,
+): Promise<{ name: string; bytes: ArrayBuffer } | null> {
+	const row = await env.DB.prepare("SELECT name, r2_key FROM doc_extracts WHERE id = ? AND org_id = ?").bind(id, orgId).first<{ name: string; r2_key: string | null }>();
+	if (!row?.r2_key) return null;
+	const bytes = await readStaged(env.DOCS_BUCKET, row.r2_key);
+	return bytes ? { name: row.name, bytes } : null;
+}
+
+/** All ready documents' extracted JSON, for a bulk export. */
+export async function allExtractJson(db: D1Database, orgId: string) {
+	const { results } = await db
+		.prepare("SELECT id, name, doc_type, json FROM doc_extracts WHERE org_id = ? AND status = 'ready' ORDER BY created_at DESC")
+		.bind(orgId)
+		.all<{ id: string; name: string; doc_type: string | null; json: string | null }>();
+	return (results ?? []).map((r) => {
+		let extracted: unknown = null;
+		try {
+			extracted = JSON.parse(r.json ?? "null");
+		} catch {
+			/* ignore */
+		}
+		return { id: r.id, name: r.name, doc_type: r.doc_type, extracted };
+	});
 }
 
 /**
@@ -84,9 +115,9 @@ export async function queueExtraction(
 	const safeName = name.slice(0, 200);
 	const r2Key = await stageUpload(env.DOCS_BUCKET, bytes);
 	await env.DB.prepare(
-		"INSERT INTO doc_extracts (id, org_id, name, size, status) VALUES (?, ?, ?, ?, 'processing')",
+		"INSERT INTO doc_extracts (id, org_id, name, size, status, r2_key) VALUES (?, ?, ?, ?, 'processing', ?)",
 	)
-		.bind(docId, orgId, safeName, bytes.byteLength)
+		.bind(docId, orgId, safeName, bytes.byteLength, r2Key)
 		.run();
 	await env.KB_QUEUE.send({ kind: "extract", orgId, docId, name: safeName, r2Key });
 	return docId;

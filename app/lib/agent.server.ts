@@ -29,7 +29,7 @@ import {
 	cashReport,
 	transactionsByJurisdiction,
 	processInvoiceDocument,
-	setOrgHome,
+	setOrgProfile,
 } from "./ledger.server";
 
 /**
@@ -362,7 +362,7 @@ export function createFinanceAgent(
 				description: "Set the org's own state/country - used as the seller side for GST place-of-supply.",
 				inputSchema: z.object({ state: z.string(), country: z.string().optional() }),
 				execute: async ({ state, country }) => {
-					await setOrgHome(env.DB, orgId, state, country ?? null);
+					await setOrgProfile(env.DB, orgId, { home_state: state, home_country: country ?? null });
 					return { ok: true };
 				},
 			}),

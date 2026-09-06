@@ -12,7 +12,7 @@ import {
 	setAgentModel,
 } from "~/lib/org.server";
 import { AGENT_MODELS, availableAgentModels } from "~/lib/agent.server";
-import { setOrgHome } from "~/lib/ledger.server";
+import { getOrgProfile, setOrgProfile } from "~/lib/ledger.server";
 
 export function meta() {
 	return [{ title: "Organization | Gray Office" }];
@@ -27,6 +27,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		role,
 		members: await listMembers(env.DB, orgId),
 		invites: await listPendingInvites(env.DB, orgId),
+		profile: await getOrgProfile(env.DB, orgId),
 		models: AGENT_MODELS.map((m) => ({ id: m.id, label: m.label, ready: available.includes(m.id) })),
 	};
 }
@@ -54,15 +55,15 @@ export async function action({ request, context }: Route.ActionArgs) {
 		return { ok: "model" as const };
 	}
 
-	if (intent === "jurisdiction") {
+	if (intent === "profile") {
 		if (role === "member") return { error: "Only an owner or admin can set this." };
-		await setOrgHome(
-			env.DB,
-			orgId,
-			String(form.get("home_state") ?? "").trim() || null,
-			String(form.get("home_country") ?? "").trim() || null,
-		);
-		return { ok: "jurisdiction" as const };
+		await setOrgProfile(env.DB, orgId, {
+			address: String(form.get("address") ?? "").trim(),
+			tax_id: String(form.get("tax_id") ?? "").trim(),
+			home_state: String(form.get("home_state") ?? "").trim(),
+			home_country: String(form.get("home_country") ?? "").trim() || "IN",
+		});
+		return { ok: "profile" as const };
 	}
 
 	if (intent === "rename") {
@@ -85,7 +86,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 const card = "rounded-xl bg-card p-4 text-card-foreground";
 
 export default function Organization({ loaderData, actionData }: Route.ComponentProps) {
-	const { org, role, members, invites, models } = loaderData;
+	const { org, role, members, invites, models, profile } = loaderData;
 	const nav = useNavigation();
 	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
 	const err = actionData && "error" in actionData ? actionData.error : null;
@@ -140,32 +141,63 @@ export default function Organization({ loaderData, actionData }: Route.Component
 				</section>
 
 				<section className={card}>
-					<h2 className="text-lg font-medium">Home jurisdiction</h2>
+					<h2 className="text-lg font-medium">Organization details</h2>
 					<p className="mt-1 text-sm text-muted-foreground">
-						Your own state and country — the seller side when the assistant works
-						out GST place of supply.
+						Your registered address and tax ID. These print on invoices you
+						raise, and the state is used as the seller side when GST place of
+						supply is worked out.
 					</p>
-					<Form method="post" className="mt-3 flex flex-wrap items-end gap-2">
-						<input type="hidden" name="intent" value="jurisdiction" />
-						<input
-							name="home_state"
-							defaultValue={org.home_state ?? ""}
-							placeholder="State (e.g. Karnataka)"
-							disabled={role === "member"}
-							className="h-9 w-56 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring disabled:opacity-60"
-						/>
-						<input
-							name="home_country"
-							defaultValue={org.home_country ?? "IN"}
-							placeholder="Country"
-							disabled={role === "member"}
-							className="h-9 w-24 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring disabled:opacity-60"
-						/>
+					<Form method="post" className="mt-3 grid gap-2 sm:max-w-md" key={profile.tax_id ?? ""}>
+						<input type="hidden" name="intent" value="profile" />
+						<label className="text-sm text-muted-foreground">
+							Registered address
+							<textarea
+								name="address"
+								rows={2}
+								defaultValue={profile.address ?? ""}
+								disabled={role === "member"}
+								placeholder="Street, city, PIN"
+								className="mt-1 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm text-foreground outline-none focus:border-ring disabled:opacity-60"
+							/>
+						</label>
+						<label className="text-sm text-muted-foreground">
+							GST number / VAT ID
+							<input
+								name="tax_id"
+								defaultValue={profile.tax_id ?? ""}
+								disabled={role === "member"}
+								placeholder="e.g. 29ABCDE1234F1Z5"
+								className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none focus:border-ring disabled:opacity-60"
+							/>
+						</label>
+						<div className="flex gap-2">
+							<label className="flex-1 text-sm text-muted-foreground">
+								State
+								<input
+									name="home_state"
+									defaultValue={profile.home_state ?? ""}
+									disabled={role === "member"}
+									placeholder="Karnataka"
+									className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none focus:border-ring disabled:opacity-60"
+								/>
+							</label>
+							<label className="w-28 text-sm text-muted-foreground">
+								Country
+								<input
+									name="home_country"
+									defaultValue={profile.home_country ?? "IN"}
+									disabled={role === "member"}
+									className="mt-1 h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground outline-none focus:border-ring disabled:opacity-60"
+								/>
+							</label>
+						</div>
 						{role !== "member" && (
-							<Button type="submit" size="sm" variant="outline" disabled={busy}>Save</Button>
-						)}
-						{actionData && "ok" in actionData && actionData.ok === "jurisdiction" && (
-							<span className="pb-1.5 text-sm text-[var(--dashboard-completed)]">Saved.</span>
+							<div className="flex items-center gap-2">
+								<Button type="submit" size="sm" variant="outline" disabled={busy}>Save</Button>
+								{actionData && "ok" in actionData && actionData.ok === "profile" && (
+									<span className="text-sm text-[var(--dashboard-completed)]">Saved.</span>
+								)}
+							</div>
 						)}
 					</Form>
 				</section>

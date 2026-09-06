@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Form, useNavigation, useRevalidator } from "react-router";
 import type { Route } from "./+types/dashboard.documents";
 import { Button } from "~/components/ui/button";
@@ -26,7 +26,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 	const intent = String(form.get("intent") ?? "upload");
 
 	if (intent === "delete") {
-		await deleteExtract(env.DB, orgId, String(form.get("docId") ?? ""));
+		await deleteExtract(env, orgId, String(form.get("docId") ?? ""));
 		return { ok: "deleted" as const };
 	}
 
@@ -45,7 +45,6 @@ export async function action({ request, context }: Route.ActionArgs) {
 		await queueExtraction(env, orgId, file.name, await file.arrayBuffer());
 		queued++;
 	}
-
 	return { ok: "queued" as const, queued, skipped };
 }
 
@@ -55,22 +54,17 @@ const badge: Record<string, string> = {
 	error: "bg-[color-mix(in_oklch,var(--destructive)_16%,transparent)] text-destructive",
 };
 
-function pretty(json: string | null): string {
-	if (!json) return "";
-	try {
-		return JSON.stringify(JSON.parse(json), null, 2);
-	} catch {
-		return json;
-	}
-}
+const fmtDate = (s: number) => new Date(s * 1000).toLocaleDateString();
+const fmtSize = (b: number | null) =>
+	b == null ? "—" : b < 1024 * 1024 ? `${Math.round(b / 1024)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
 
 export default function Documents({ loaderData, actionData }: Route.ComponentProps) {
 	const { docs } = loaderData;
 	const nav = useNavigation();
-	const busy = nav.formData != null; // a form submit is in flight (not a plain link nav)
+	const busy = nav.formData != null;
 	const revalidator = useRevalidator();
-	const [open, setOpen] = useState<string | null>(null);
 	const anyProcessing = docs.some((d) => d.status === "processing");
+	const ready = docs.filter((d) => d.status === "ready");
 
 	useEffect(() => {
 		if (!anyProcessing) return;
@@ -79,13 +73,13 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 	}, [anyProcessing, revalidator]);
 
 	return (
-		<div className="mx-auto max-w-4xl p-4 md:p-6">
+		<div className="mx-auto max-w-5xl p-4 md:p-6">
 			<div className="mb-6">
 				<h1 className="text-2xl font-normal text-foreground">Documents</h1>
 				<p className="text-sm text-muted-foreground">
-					Upload up to {MAX_FILES} PDFs. Each is converted to structured JSON
-					(invoice / PO / statement / receipt fields + line items) that the
-					finance assistant reads as context.
+					Every PDF you've uploaded — invoices, bills, statements, receipts — with
+					the structured JSON extracted from it. Download the original PDF or the
+					JSON, one at a time or all together.
 				</p>
 			</div>
 
@@ -94,69 +88,89 @@ export default function Documents({ loaderData, actionData }: Route.ComponentPro
 			)}
 			{actionData && "ok" in actionData && actionData.ok === "queued" && (
 				<p className="mb-4 rounded-lg border border-[var(--dashboard-completed)]/30 bg-[color-mix(in_oklch,var(--dashboard-completed)_10%,transparent)] px-3 py-2 text-sm text-[var(--dashboard-completed)]">
-					{actionData.queued} file(s) queued for extraction.
-					{actionData.skipped.length > 0 && ` Skipped (not a PDF / too large): ${actionData.skipped.join(", ")}`}
+					{actionData.queued} file(s) queued.
+					{actionData.skipped.length > 0 && ` Skipped: ${actionData.skipped.join(", ")}`}
 				</p>
 			)}
 
 			<section className="rounded-xl border border-border bg-card p-4">
-				<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
-					<input
-						type="file"
-						name="files"
-						accept="application/pdf"
-						multiple
-						required
-						className="text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
-					/>
-					<Button type="submit" size="sm" disabled={busy}>
-						{busy ? "Uploading…" : "Upload & extract"}
-					</Button>
-				</Form>
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<Form method="post" encType="multipart/form-data" className="flex flex-wrap items-center gap-3">
+						<input
+							type="file"
+							name="files"
+							accept="application/pdf"
+							multiple
+							required
+							className="text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+						/>
+						<Button type="submit" size="sm" disabled={busy}>
+							{busy ? "Uploading…" : "Upload & extract"}
+						</Button>
+					</Form>
+					{ready.length > 0 && (
+						<div className="flex gap-2">
+							<a href="/dashboard/downloads?docs=all&fmt=json" className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">
+								Download all JSON
+							</a>
+							<a href="/dashboard/downloads?docs=all&fmt=zip" className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted">
+								Download all PDF (.zip)
+							</a>
+						</div>
+					)}
+				</div>
 			</section>
 
-			<section className="mt-4 rounded-xl border border-border bg-card p-4">
-				<h2 className="mb-3 text-sm font-medium text-foreground">Extracted documents ({docs.length})</h2>
-				<ul className="divide-y divide-border/60 text-sm">
-					{docs.map((d) => (
-						<li key={d.id} className="py-2.5">
-							<div className="flex items-center justify-between gap-3">
-								<button
-									type="button"
-									onClick={() => setOpen(open === d.id ? null : d.id)}
-									className="min-w-0 flex-1 text-left"
-								>
-									<div className="truncate text-foreground">{d.name}</div>
-									<div className="text-xs text-muted-foreground">
-										{d.status === "ready"
-											? d.doc_type ?? "document"
-											: d.status === "error"
-												? d.error
-												: "Extracting…"}
-									</div>
-								</button>
-								<div className="flex shrink-0 items-center gap-2">
-									<span className={`rounded-md px-2 py-0.5 text-xs font-medium ${badge[d.status] ?? ""}`}>
-										{d.status}
-									</span>
-									<Form method="post">
-										<input type="hidden" name="intent" value="delete" />
-										<input type="hidden" name="docId" value={d.id} />
-										<button type="submit" className="text-xs text-muted-foreground hover:text-destructive">
-											Delete
-										</button>
-									</Form>
-								</div>
-							</div>
-							{open === d.id && d.status === "ready" && (
-								<pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-muted p-3 text-xs text-foreground">
-									{pretty(d.json)}
-								</pre>
+			<section className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
+				<div className="overflow-x-auto">
+					<table className="w-full text-sm">
+						<thead>
+							<tr className="border-b border-border text-xs text-muted-foreground">
+								<th className="px-4 py-2.5 text-left font-medium">Document</th>
+								<th className="px-3 py-2.5 text-left font-medium">Type</th>
+								<th className="px-3 py-2.5 text-left font-medium">Uploaded</th>
+								<th className="px-3 py-2.5 text-right font-medium">Size</th>
+								<th className="px-3 py-2.5 text-left font-medium">Status</th>
+								<th className="px-4 py-2.5 text-right font-medium">Download</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-border/60">
+							{docs.map((d) => (
+								<tr key={d.id} className="hover:bg-muted/40">
+									<td className="max-w-[16rem] truncate px-4 py-2.5 text-foreground">{d.name}</td>
+									<td className="px-3 py-2.5 capitalize text-muted-foreground">
+										{d.doc_type?.replace(/_/g, " ") ?? "—"}
+									</td>
+									<td className="px-3 py-2.5 text-muted-foreground">{fmtDate(d.created_at)}</td>
+									<td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{fmtSize(d.size)}</td>
+									<td className="px-3 py-2.5">
+										<span className={`rounded-md px-2 py-0.5 text-xs font-medium ${badge[d.status] ?? ""}`}>
+											{d.status === "error" ? d.error ?? "error" : d.status}
+										</span>
+									</td>
+									<td className="px-4 py-2.5">
+										<div className="flex items-center justify-end gap-2.5 text-xs">
+											<a href={`/dashboard/downloads?doc=${d.id}&fmt=pdf`} className="font-medium text-brand hover:underline">PDF</a>
+											{d.status === "ready" && (
+												<a href={`/dashboard/downloads?doc=${d.id}&fmt=json`} className="font-medium text-brand hover:underline">JSON</a>
+											)}
+											<Form method="post">
+												<input type="hidden" name="intent" value="delete" />
+												<input type="hidden" name="docId" value={d.id} />
+												<button type="submit" className="text-muted-foreground hover:text-destructive">Delete</button>
+											</Form>
+										</div>
+									</td>
+								</tr>
+							))}
+							{docs.length === 0 && (
+								<tr>
+									<td colSpan={6} className="px-4 py-6 text-muted-foreground">No documents yet.</td>
+								</tr>
 							)}
-						</li>
-					))}
-					{docs.length === 0 && <li className="py-3 text-muted-foreground">No documents yet.</li>}
-				</ul>
+						</tbody>
+					</table>
+				</div>
 			</section>
 		</div>
 	);

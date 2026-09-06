@@ -47,7 +47,6 @@ export const navigationGroups: NavigationGroup[] = [
     items: [
       { name: 'Invoices', href: '/invoices', icon: Icons.FileIcon },
       { name: 'Banking', href: '/banking', icon: Building2Icon },
-      { name: 'Payments', href: '/integrations/payments', icon: CreditCardIcon },
     ],
   },
   {
@@ -63,6 +62,7 @@ export const navigationGroups: NavigationGroup[] = [
     collapsible: true,
     items: [
       { name: 'Integrations', href: '/integrations', icon: Icons.PlugsConnectedIcon },
+      { name: 'Payments', href: '/integrations/payments', icon: CreditCardIcon },
       { name: 'Audit room', href: '/audit', icon: Icons.ShieldCheckIcon },
     ],
   },

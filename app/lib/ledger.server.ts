@@ -662,6 +662,41 @@ export async function processInvoiceDocument(env: Env, orgId: string, docId: str
 	};
 }
 
-export async function setOrgHome(db: D1Database, orgId: string, state: string | null, country: string | null) {
-	await db.prepare("UPDATE organizations SET home_state = ?, home_country = COALESCE(?, home_country) WHERE id = ?").bind(state, country, orgId).run();
+export type OrgProfile = {
+	address: string | null;
+	tax_id: string | null;
+	home_state: string | null;
+	home_country: string | null;
+};
+
+export async function getOrgProfile(db: D1Database, orgId: string): Promise<OrgProfile> {
+	const row = await db
+		.prepare("SELECT address, tax_id, home_state, home_country FROM organizations WHERE id = ?")
+		.bind(orgId)
+		.first<OrgProfile>();
+	return row ?? { address: null, tax_id: null, home_state: null, home_country: "IN" };
+}
+
+export async function setOrgProfile(
+	db: D1Database,
+	orgId: string,
+	p: { address?: string | null; tax_id?: string | null; home_state?: string | null; home_country?: string | null },
+) {
+	await db
+		.prepare(
+			`UPDATE organizations SET
+			   address      = COALESCE(?, address),
+			   tax_id       = COALESCE(?, tax_id),
+			   home_state   = COALESCE(?, home_state),
+			   home_country = COALESCE(?, home_country)
+			 WHERE id = ?`,
+		)
+		.bind(
+			p.address ?? null,
+			p.tax_id ?? null,
+			p.home_state ?? null,
+			p.home_country ?? null,
+			orgId,
+		)
+		.run();
 }
