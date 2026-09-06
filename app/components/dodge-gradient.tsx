@@ -25,7 +25,7 @@ export function DodgeGradient({ colors = RAINBOW }: { colors?: string[] }) {
 					height: "100%",
 					width: "100%",
 					background:
-						"radial-gradient(72% 130% at 50% 100%, rgba(128,130,142,0.11), rgba(128,130,142,0.04) 45%, transparent 72%)",
+						"radial-gradient(80% 140% at 50% 100%, rgba(184,188,205,0.34) 0%, rgba(150,154,172,0.16) 34%, rgba(120,124,140,0.05) 60%, transparent 78%)",
 				}}
 			/>
 		);

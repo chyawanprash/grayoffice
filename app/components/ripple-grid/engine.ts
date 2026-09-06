@@ -407,6 +407,19 @@ export class RippleGrid {
     if (this.ok) this.draw(0);
   }
 
+  /** Update ink/paper without rebuilding (so a theme flip doesn't lose the
+   * WebGL context, which destroy() -> loseContext() would). */
+  setColors(colors: { ink?: string; paper?: string }) {
+    if (colors.ink) this.ink = rgb(colors.ink);
+    if (colors.paper) this.paper = rgb(colors.paper);
+    const gl = this.gl;
+    if (!gl || !this.prog || this.destroyed) return;
+    gl.useProgram(this.prog);
+    gl.uniform3fv(this.u.uInk, this.ink);
+    gl.uniform3fv(this.u.uPaper, this.paper);
+    if (!this.running) this.renderStill();
+  }
+
   destroy() {
     this.stop();
     this.destroyed = true;

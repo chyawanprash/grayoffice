@@ -117,7 +117,13 @@ export function useTheme() {
  * dependent visuals should treat `null` as "not yet known".
  */
 export function useIsDark(): boolean | null {
-	const [dark, setDark] = useState<boolean | null>(null);
+	// Read the class in the initializer so the FIRST client render is already
+	// correct - no null->value transition that would retear effects keyed on it.
+	const [dark, setDark] = useState<boolean | null>(() =>
+		typeof document === "undefined"
+			? null
+			: document.documentElement.classList.contains("dark"),
+	);
 	useEffect(() => {
 		const el = document.documentElement;
 		const sync = () => setDark(el.classList.contains("dark"));
