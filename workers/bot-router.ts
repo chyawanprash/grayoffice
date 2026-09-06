@@ -25,8 +25,18 @@ export type InboundResult = {
 	detail: unknown;
 };
 
-const ROUTES = ["pdf-to-json", "unhandled"] as const;
+const ROUTES = ["pdf-to-json", "ask", "unhandled"] as const;
 type RouteName = (typeof ROUTES)[number];
+
+/** Model that answers free-text questions from the bots. */
+const CHAT_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+
+const CHAT_SYSTEM = `You are the Gray Office finance operations assistant, replying
+to a user over a chat bot (Slack / Telegram / Discord). Help with closing the
+books, reconciliations, invoices, cash reports and GST / jurisdiction questions.
+Be concise and specific — a chat reply, not an essay. Show the numbers and the
+working when relevant. Flag anything that needs a human's judgement instead of
+guessing.`;
 
 /** Deterministic first: a PDF is always a pdf-to-json job. */
 function routeByFiles(files: InboundFile[]): RouteName | null {
@@ -35,25 +45,25 @@ function routeByFiles(files: InboundFile[]): RouteName | null {
 	return null;
 }
 
-/** Text-only messages: ask the model to classify. Defaults to 'unhandled'. */
-async function routeByText(env: Env, text: string): Promise<RouteName> {
-	if (!env.AI || !text.trim()) return "unhandled";
-	try {
-		const r = (await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-			messages: [
-				{
-					role: "system",
-					content: `Classify the user request into exactly one label from this list: ${ROUTES.join(", ")}. Reply with only the label.`,
-				},
-				{ role: "user", content: text.slice(0, 2000) },
-			],
-			max_tokens: 12,
-		})) as { response?: string };
-		const guess = (r.response ?? "").trim().toLowerCase();
-		return (ROUTES.find((x) => guess.includes(x)) ?? "unhandled") as RouteName;
-	} catch {
-		return "unhandled";
-	}
+/** Text-only messages: any real question goes to the AI assistant ('ask'). */
+async function routeByText(_env: Env, text: string): Promise<RouteName> {
+	return text.trim() ? "ask" : "unhandled";
+}
+
+/** Free-text Q&A backed by Workers AI — the bots' "use the backend's AI" path. */
+export async function askAgent(env: Env, msg: Inbound): Promise<{ reply: string }> {
+	if (!env.AI || !msg.text.trim())
+		return { reply: "Ask me a finance operations question and I'll help." };
+
+	const r = (await env.AI.run(CHAT_MODEL, {
+		messages: [
+			{ role: "system", content: CHAT_SYSTEM },
+			{ role: "user", content: msg.text.slice(0, 4000) },
+		],
+		max_tokens: 512,
+	})) as { response?: string };
+
+	return { reply: (r.response ?? "").trim() || "Sorry, I couldn't produce an answer." };
 }
 
 export async function handleInbound(env: Env, msg: Inbound): Promise<InboundResult> {
@@ -92,6 +102,8 @@ async function dispatch(env: Env, route: RouteName, msg: Inbound): Promise<unkno
 			for (const f of pdfs) results.push({ file: f.name, json: await pdfToJson(env, f) });
 			return { results };
 		}
+		case "ask":
+			return askAgent(env, msg);
 		case "unhandled":
 			return { note: "No route matched. Add a case in bot-router.ts dispatch()." };
 	}
