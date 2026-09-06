@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createRequestHandler } from "react-router";
 import { apiRoutes } from "./api";
 import { botRoutes } from "./bots";
+import { paymentRoutes } from "./payments";
 import { pdfToJson } from "./bot-router";
 import { queueConsumer } from "./queue";
 
@@ -9,6 +10,7 @@ const app = new Hono<{ Bindings: Env & { TARGET_DOMAIN?: string } }>();
 
 // API routes
 app.route("/api/bots", botRoutes);
+app.route("/api/payments", paymentRoutes);
 app.route("/api", apiRoutes);
 
 // PDF -> JSON. Accepts multipart form (field "file") or JSON { url, name }.

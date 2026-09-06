@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from 'react'
 import {
   BedIcon,
   Building2Icon,
+  CreditCardIcon,
   FlaskConicalIcon,
   PillIcon,
 } from 'lucide-react'
@@ -20,6 +21,8 @@ export type NavigationItem = {
   href: string
   icon: NavIcon
   badge?: string
+  /** render one level deeper (sub-item under the row above) */
+  indent?: boolean
 }
 
 export type NavigationGroup = {
@@ -63,11 +66,18 @@ export const navigationGroups: NavigationGroup[] = [
     ],
   },
   {
+    label: 'Integrations',
+    collapsible: true,
+    items: [
+      { name: 'Integrations', href: '/integrations', icon: Icons.PlugsConnectedIcon },
+      { name: 'Payments', href: '/integrations/payments', icon: CreditCardIcon },
+    ],
+  },
+  {
     label: 'Admin',
     collapsible: true,
     items: [
       { name: 'Settings', href: '/settings', icon: Icons.GearIcon },
-      { name: 'Integrations', href: '/integrations', icon: Icons.PlugsConnectedIcon },
       { name: 'Permissions', href: '/permissions', icon: Icons.ShieldCheckIcon },
     ],
   },

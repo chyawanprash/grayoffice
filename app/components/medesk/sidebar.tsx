@@ -69,7 +69,11 @@ function NavItem({ item }: { item: NavigationItem }) {
   return (
     <SidebarMenuButton
       tooltip={item.name}
-      className={menuButtonClassName}
+      className={cn(
+        menuButtonClassName,
+        item.indent &&
+          'h-10 pl-9 text-sm group-data-[collapsible=icon]:hidden',
+      )}
       render={
         <DashboardLink
           href={item.href}
