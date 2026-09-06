@@ -27,14 +27,21 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const userId = await requireUserId(request, SESSION_SECRET);
 	const user = await findUserById(DB, userId);
 	if (!user) throw new Response("Not found", { status: 404 });
+	const meta = await DB.prepare(
+		"SELECT created_at FROM users WHERE id = ?",
+	)
+		.bind(userId)
+		.first<{ created_at: number }>();
 
 	// Enrollment in progress: secret stored but not yet enabled.
 	const enrolling = !user.totp_enabled && Boolean(user.totp_secret);
 	return {
 		email: user.email,
+		name: user.name,
 		hasPassword: Boolean(user.password_hash),
 		googleLinked: Boolean(user.google_id),
 		totpEnabled: Boolean(user.totp_enabled),
+		createdAt: meta?.created_at ?? null,
 		recoveryCount: await countRecoveryCodes(DB, userId),
 		enroll:
 			enrolling && user.totp_secret
@@ -148,13 +155,14 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 	const busy = nav.state !== "idle";
 	const err = actionData && "error" in actionData ? actionData.error : null;
 	const pwError =
-		actionData && "pwError" in actionData ? actionData.pwError : null;
+		(actionData && "pwError" in actionData ? actionData.pwError : null) ?? null;
 	const deleteError =
 		(actionData && "deleteError" in actionData
 			? actionData.deleteError
 			: null) ?? null;
-	const passwordSaved =
-		actionData && "ok" in actionData && actionData.ok === "password";
+	const passwordSaved = Boolean(
+		actionData && "ok" in actionData && actionData.ok === "password",
+	);
 	const freshCodes =
 		actionData && "recoveryCodes" in actionData ? actionData.recoveryCodes : null;
 
@@ -163,12 +171,62 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 			<h1 className="text-xl font-semibold tracking-tight text-neutral-900">
 				Settings
 			</h1>
-			<p className="mt-1 text-sm text-neutral-500">
-				Signed in as {loaderData.email}
-				{loaderData.googleLinked && " · Google linked"}
-			</p>
+			<p className="mt-1 text-sm text-neutral-500">Your account and security</p>
 
 			<section className="mt-8 rounded-xl border border-neutral-200 bg-surface p-6">
+				<h2 className="font-medium text-neutral-900">Account information</h2>
+				<dl className="mt-4 divide-y divide-neutral-100 text-sm">
+					{loaderData.name && (
+						<div className="flex justify-between py-2.5">
+							<dt className="text-neutral-500">Name</dt>
+							<dd className="text-neutral-900">{loaderData.name}</dd>
+						</div>
+					)}
+					<div className="flex justify-between py-2.5">
+						<dt className="text-neutral-500">Email</dt>
+						<dd className="text-neutral-900">{loaderData.email}</dd>
+					</div>
+					<div className="flex justify-between py-2.5">
+						<dt className="text-neutral-500">Sign-in methods</dt>
+						<dd className="text-neutral-900">
+							{[
+								loaderData.hasPassword && "Password",
+								loaderData.googleLinked && "Google",
+							]
+								.filter(Boolean)
+								.join(" · ") || "—"}
+						</dd>
+					</div>
+					<div className="flex justify-between py-2.5">
+						<dt className="text-neutral-500">Two-factor auth</dt>
+						<dd className={loaderData.totpEnabled ? "text-green-700" : "text-neutral-900"}>
+							{loaderData.totpEnabled ? "On" : "Off"}
+						</dd>
+					</div>
+					{loaderData.createdAt && (
+						<div className="flex justify-between py-2.5">
+							<dt className="text-neutral-500">Member since</dt>
+							<dd className="text-neutral-900">
+								{new Date(loaderData.createdAt * 1000).toLocaleDateString(undefined, {
+									year: "numeric",
+									month: "long",
+									day: "numeric",
+								})}
+							</dd>
+						</div>
+					)}
+				</dl>
+				<div className="mt-4 border-t border-neutral-200 pt-4">
+					<ChangePasswordDialog
+						hasPassword={loaderData.hasPassword}
+						error={pwError}
+						saved={passwordSaved}
+						busy={busy}
+					/>
+				</div>
+			</section>
+
+			<section className="mt-6 rounded-xl border border-neutral-200 bg-surface p-6">
 				<div className="flex items-start gap-3">
 					<div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-tint text-brand">
 						<ShieldCheck size={18} weight="duotone" />
@@ -292,50 +350,6 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 				</div>
 			</section>
 
-			<section className="mt-6 rounded-xl border border-neutral-200 bg-surface p-6">
-				<h2 className="font-medium text-neutral-900">
-					{loaderData.hasPassword ? "Change password" : "Set a password"}
-				</h2>
-				<p className="mt-1 text-sm text-neutral-500">
-					{loaderData.hasPassword
-						? "You’ll stay signed in on this device."
-						: "Add a password so you can sign in without Google."}
-				</p>
-				{pwError && <p className="mt-3 text-sm text-danger">{pwError}</p>}
-				{passwordSaved && (
-					<p className="mt-3 text-sm text-green-700">Password updated.</p>
-				)}
-				<Form method="post" className="mt-4 grid max-w-sm gap-2" key={String(passwordSaved)}>
-					<input type="hidden" name="intent" value="change-password" />
-					{loaderData.hasPassword && (
-						<input
-							name="current"
-							type="password"
-							autoComplete="current-password"
-							placeholder="Current password"
-							className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-						/>
-					)}
-					<input
-						name="next"
-						type="password"
-						autoComplete="new-password"
-						placeholder="New password (min 8 characters)"
-						className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-					/>
-					<input
-						name="confirm"
-						type="password"
-						autoComplete="new-password"
-						placeholder="Confirm new password"
-						className="h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-					/>
-					<Button type="submit" size="sm" disabled={busy} className="justify-self-start">
-						{loaderData.hasPassword ? "Update password" : "Set password"}
-					</Button>
-				</Form>
-			</section>
-
 			<section className="mt-6 rounded-xl border border-danger/30 bg-surface p-6">
 				<h2 className="font-medium text-danger">Delete account</h2>
 				<p className="mt-1 text-sm text-neutral-500">
@@ -349,6 +363,98 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 				/>
 			</section>
 		</div>
+	);
+}
+
+const fieldClass =
+	"h-9 rounded-lg border border-neutral-300 bg-surface px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
+
+function ChangePasswordDialog({
+	hasPassword,
+	error,
+	saved,
+	busy,
+}: {
+	hasPassword: boolean;
+	error: string | null;
+	saved: boolean;
+	busy: boolean;
+}) {
+	const ref = useRef<HTMLDialogElement>(null);
+
+	useEffect(() => {
+		if (error) ref.current?.showModal();
+		if (saved) ref.current?.close();
+	}, [error, saved]);
+
+	return (
+		<>
+			<div className="flex items-center gap-3">
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					onClick={() => ref.current?.showModal()}
+				>
+					{hasPassword ? "Change password" : "Set a password"}
+				</Button>
+				{saved && <span className="text-sm text-green-700">Password updated.</span>}
+			</div>
+
+			<dialog
+				ref={ref}
+				className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-neutral-200 bg-surface p-6 backdrop:bg-black/40"
+			>
+				<h3 className="font-medium text-neutral-900">
+					{hasPassword ? "Change password" : "Set a password"}
+				</h3>
+				<p className="mt-1 text-sm text-neutral-500">
+					{hasPassword
+						? "You’ll stay signed in on this device."
+						: "Add a password so you can sign in without Google."}
+				</p>
+				{error && <p className="mt-3 text-sm text-danger">{error}</p>}
+				<Form method="post" className="mt-4 grid gap-2">
+					<input type="hidden" name="intent" value="change-password" />
+					{hasPassword && (
+						<input
+							name="current"
+							type="password"
+							autoComplete="current-password"
+							placeholder="Current password"
+							className={fieldClass}
+						/>
+					)}
+					<input
+						name="next"
+						type="password"
+						autoComplete="new-password"
+						placeholder="New password (min 8 characters)"
+						className={fieldClass}
+					/>
+					<input
+						name="confirm"
+						type="password"
+						autoComplete="new-password"
+						placeholder="Confirm new password"
+						className={fieldClass}
+					/>
+					<div className="mt-2 flex items-center justify-end gap-2">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => ref.current?.close()}
+						>
+							Cancel
+						</Button>
+						<Button type="submit" size="sm" disabled={busy}>
+							{hasPassword ? "Update password" : "Set password"}
+						</Button>
+					</div>
+				</Form>
+			</dialog>
+		</>
 	);
 }
 

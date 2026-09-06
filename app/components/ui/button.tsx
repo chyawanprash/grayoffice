@@ -12,6 +12,7 @@ const buttonVariants = cva(
 				outline:
 					"bg-surface text-neutral-700 ring-1 ring-neutral-950/10 hover:bg-tint",
 				ghost: "text-neutral-600 hover:bg-tint hover:text-neutral-900",
+				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
 				danger: "bg-danger text-white hover:bg-danger/90",
 			},
 			size: {
@@ -19,6 +20,9 @@ const buttonVariants = cva(
 				md: "px-5 py-2.5 text-[15px]",
 				lg: "px-6 py-3 text-[15px]",
 				block: "h-11 w-full text-[15px]",
+				icon: "size-9 p-0 [&_svg]:size-4",
+				"icon-sm": "size-8 p-0 [&_svg]:size-4",
+				"icon-lg": "size-10 p-0 [&_svg]:size-5",
 			},
 		},
 		defaultVariants: { variant: "primary", size: "md" },

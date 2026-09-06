@@ -1,0 +1,41 @@
+/* Medesk dashboard tokens + helpers. Colors reuse the app palette. */
+.medesk-dashboard {
+  --dashboard-scheduled: var(--color-brand, #4f46e5);
+  --dashboard-completed: #16a34a;
+  --dashboard-no-show: #f59e0b;
+  --dashboard-secondary: #64748b;
+}
+
+:root:not([data-theme="light"]) .medesk-dashboard,
+:root[data-theme="dark"] .medesk-dashboard {
+  --dashboard-completed: #4ade80;
+  --dashboard-no-show: #fbbf24;
+  --dashboard-secondary: #94a3b8;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-load-segment {
+  width: var(--department-width, auto);
+  animation: dashboard-grow-x 0.5s ease both;
+}
+.dashboard-resource-progress {
+  animation: dashboard-grow-x 0.6s ease both;
+}
+
+@keyframes dashboard-grow-x {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
