@@ -604,6 +604,46 @@ export async function transactionsByJurisdiction(env: Env, orgId: string) {
 	};
 }
 
+/** Headline invoice analytics for the dashboard. */
+export async function invoiceAnalytics(db: D1Database, orgId: string) {
+	const [monthly, status, gst, totals] = await Promise.all([
+		db.prepare(
+			`SELECT substr(issue_date,1,7) AS month, direction, COUNT(*) AS count, SUM(total_cents) AS total_cents
+			 FROM invoices WHERE org_id = ? AND status != 'void'
+			 GROUP BY month, direction ORDER BY month DESC LIMIT 24`,
+		).bind(orgId).all<{ month: string; direction: string; count: number; total_cents: number }>(),
+		db.prepare(
+			"SELECT status, COUNT(*) AS count, SUM(total_cents) AS total_cents FROM invoices WHERE org_id = ? GROUP BY status",
+		).bind(orgId).all<{ status: string; count: number; total_cents: number }>(),
+		db.prepare(
+			`SELECT SUM(l.cgst_cents) AS cgst, SUM(l.sgst_cents) AS sgst, SUM(l.igst_cents) AS igst
+			 FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id
+			 WHERE i.org_id = ? AND i.status != 'void'`,
+		).bind(orgId).first<{ cgst: number | null; sgst: number | null; igst: number | null }>(),
+		db.prepare(
+			"SELECT COUNT(*) AS count, COALESCE(SUM(total_cents),0) AS total_cents FROM invoices WHERE org_id = ? AND status != 'void'",
+		).bind(orgId).first<{ count: number; total_cents: number }>(),
+	]);
+
+	// fold monthly rows into { month, receivable, payable } ascending
+	const byMonth = new Map<string, { month: string; receivable: number; payable: number }>();
+	for (const r of monthly.results ?? []) {
+		const m = byMonth.get(r.month) ?? { month: r.month, receivable: 0, payable: 0 };
+		if (r.direction === "receivable") m.receivable = r.count;
+		else m.payable = r.count;
+		byMonth.set(r.month, m);
+	}
+	const months = [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
+
+	return {
+		months,
+		status: (status.results ?? []).map((s) => ({ ...s, total: inr(s.total_cents ?? 0) })),
+		gst: { cgst: inr(gst?.cgst ?? 0), sgst: inr(gst?.sgst ?? 0), igst: inr(gst?.igst ?? 0) },
+		total_count: totals?.count ?? 0,
+		total_value: inr(totals?.total_cents ?? 0),
+	};
+}
+
 /* ────────────────────────────────────── invoice processing (from a PDF) */
 
 const FRAUD_ROUND = (cents: number) => cents % 100000 === 0 && cents >= 5000000; // exact ₹50k+ multiples
