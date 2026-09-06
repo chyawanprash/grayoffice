@@ -1,7 +1,7 @@
 # Copy to .dev.vars and fill in. .dev.vars is gitignored.
 # Production values are set with `wrangler secret put <NAME>`.
 
-# Cookie signing secret — any long random string
+# Cookie signing secret — generate: openssl rand -hex 32
 SESSION_SECRET="dev-session-secret-change-me"
 
 # Public base URL of the app (used to build OAuth redirect + email links)
@@ -15,3 +15,14 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 # Resend — https://resend.com/api-keys
 RESEND_API_KEY="re_your_api_key"
 RESEND_FROM="Gray Office <login@yourdomain.com>"
+
+# Pinecone — https://app.pinecone.io
+PINECONE_API_KEY="pcsk_your_api_key"
+PINECONE_INDEX_HOST="https://your-index-xxxx.svc.your-env.pinecone.io"
+
+# --- Bot ingest ---
+# The Slack / Telegram / Discord bots live in their own repos. They POST normalized
+# events to <APP_URL>/api/bots/ingest with this shared token as a Bearer header.
+# grayoffice does the AI routing + PDF->JSON + audit logging.
+# Generate: openssl rand -hex 32
+BOT_INGEST_TOKEN="dev-bot-ingest-token-change-me"
