@@ -11,8 +11,8 @@
 	// Non-secret vars. Secrets (SESSION_SECRET, GOOGLE_CLIENT_ID,
 	// GOOGLE_CLIENT_SECRET, RESEND_API_KEY) are set with `wrangler secret put`.
 	"vars": {
-		"APP_URL": "https://grayoffice.example.com",
-		"RESEND_FROM": "Gray Office <login@example.com>"
+		"APP_URL": "https://grayoffice.app",
+		"RESEND_FROM": "Gray Office <login@grayoffice.app>"
 	},
 	"ai": {
 		"binding": "AI",

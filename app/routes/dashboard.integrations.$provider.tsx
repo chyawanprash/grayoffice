@@ -5,14 +5,15 @@ import type { Route } from "./+types/dashboard.integrations.$provider";
 import { requireUserId } from "~/lib/auth.server";
 import { Button } from "~/components/ui/button";
 import {
-	PROVIDERS,
+	PROVIDER_APIS,
 	PROVIDER_IDS,
 	deleteIntegration,
-	fetchTransactions,
+	fetchResource,
 	getIntegration,
 	recentEvents,
 	saveIntegration,
 	type Provider,
+	type Record_,
 } from "~/lib/payments.server";
 
 const isProvider = (v: string): v is Provider =>
@@ -28,26 +29,54 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 	if (!isProvider(params.provider))
 		throw redirect("/dashboard/integrations/payments");
 
-	const meta = PROVIDERS[params.provider];
-	const integration = await getIntegration(DB, userId, params.provider);
+	const provider = params.provider;
+	const meta = PROVIDER_APIS[provider];
+	const integration = await getIntegration(DB, userId, provider);
 	const connected = Boolean(integration?.api_key);
+	const selected = new Set(integration?.resources ?? []);
 
-	const [tx, events] = await Promise.all([
-		connected ? fetchTransactions(integration!) : Promise.resolve(null),
-		connected
-			? recentEvents(DB, userId, params.provider)
-			: Promise.resolve([]),
-	]);
+	const data: Array<{
+		key: string;
+		label: string;
+		result: { records: Record_[] } | { error: string };
+	}> = [];
+	if (connected && integration) {
+		await Promise.all(
+			meta.resources
+				.filter((r) => selected.has(r.key))
+				.map(async (r) => {
+					data.push({
+						key: r.key,
+						label: r.label,
+						result: await fetchResource(integration, r.key),
+					});
+				}),
+		);
+	}
+	const events = connected
+		? await recentEvents(DB, userId, provider)
+		: [];
 
 	const base = (APP_URL ?? new URL(request.url).origin).replace(/\/$/, "");
 	return {
-		meta,
+		meta: {
+			id: meta.id,
+			name: meta.name,
+			blurb: meta.blurb,
+			docs: meta.docs,
+			webhookDocs: meta.webhookDocs,
+			fields: meta.fields,
+			webhookSecretLabel: meta.webhookSecretLabel,
+			modes: meta.modes,
+			resources: meta.resources.map((r) => ({ key: r.key, label: r.label })),
+		},
 		connected,
 		mode: integration?.mode ?? "test",
 		hasWebhookSecret: Boolean(integration?.webhook_secret),
 		extra: integration?.extra ?? {},
-		webhookUrl: `${base}/api/payments/webhook/${params.provider}/${userId}`,
-		tx,
+		selected: [...selected],
+		webhookUrl: `${base}/api/payments/webhook/${provider}/${userId}`,
+		data,
 		events,
 	};
 }
@@ -67,7 +96,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 	}
 
 	if (intent === "save") {
-		const meta = PROVIDERS[provider];
+		const meta = PROVIDER_APIS[provider];
 		const extra: Record<string, string> = {};
 		let apiKey: string | undefined;
 		let apiSecret: string | undefined;
@@ -78,8 +107,15 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 			} else if (f.key === "api_key") apiKey = v || undefined;
 			else if (f.key === "api_secret") apiSecret = v || undefined;
 		}
-		if (!apiKey && !(await getIntegration(DB, userId, provider))?.api_key)
+		const existing = await getIntegration(DB, userId, provider);
+		if (!apiKey && !existing?.api_key)
 			return { error: `${meta.fields[0].label} is required.` };
+
+		const validKeys = new Set(meta.resources.map((r) => r.key));
+		const resources = form
+			.getAll("resource")
+			.map(String)
+			.filter((k) => validKeys.has(k));
 
 		await saveIntegration(DB, userId, provider, {
 			mode: form.get("mode") === "live" ? "live" : "test",
@@ -87,6 +123,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 			api_secret: apiSecret,
 			webhook_secret: String(form.get("webhook_secret") ?? "").trim() || undefined,
 			extra,
+			resources,
 		});
 		return { ok: "saved" as const };
 	}
@@ -126,26 +163,23 @@ function CopyField({ value }: { value: string }) {
 	);
 }
 
-function money(amount: number | null, currency: string) {
-	if (amount == null) return "—";
-	try {
-		return new Intl.NumberFormat(undefined, {
-			style: "currency",
-			currency,
-			maximumFractionDigits: 2,
-		}).format(amount);
-	} catch {
-		return `${amount} ${currency}`;
-	}
-}
-
 export default function ProviderPage({ loaderData, actionData }: Route.ComponentProps) {
-	const { meta, connected, mode, hasWebhookSecret, extra, webhookUrl, tx, events } =
-		loaderData;
+	const {
+		meta,
+		connected,
+		mode,
+		hasWebhookSecret,
+		extra,
+		selected,
+		webhookUrl,
+		data,
+		events,
+	} = loaderData;
 	const nav = useNavigation();
 	const busy = nav.state !== "idle";
 	const err = actionData && "error" in actionData ? actionData.error : null;
 	const saved = actionData && "ok" in actionData && actionData.ok === "saved";
+	const sel = new Set(selected);
 
 	return (
 		<div className="flex flex-col gap-6 p-4 md:p-6">
@@ -187,18 +221,17 @@ export default function ProviderPage({ loaderData, actionData }: Route.Component
 				</div>
 			</div>
 
-			<div className="grid gap-3 lg:grid-cols-2">
+			<Form method="post" className="grid gap-3 lg:grid-cols-2">
+				<input type="hidden" name="intent" value="save" />
+
 				{/* Connection */}
 				<section className={cardClass}>
 					<h2 className="text-sm font-medium text-foreground">Connection</h2>
 					{err && <p className="mt-2 text-sm text-destructive">{err}</p>}
 					{saved && (
-						<p className="mt-2 text-sm text-[var(--dashboard-completed)]">
-							Saved.
-						</p>
+						<p className="mt-2 text-sm text-[var(--dashboard-completed)]">Saved.</p>
 					)}
-					<Form method="post" className="mt-3 space-y-3">
-						<input type="hidden" name="intent" value="save" />
+					<div className="mt-3 space-y-3">
 						<div className="flex gap-1.5">
 							{meta.modes.map((m) => (
 								<label
@@ -243,133 +276,157 @@ export default function ProviderPage({ loaderData, actionData }: Route.Component
 								type="password"
 								autoComplete="off"
 								placeholder={
-									hasWebhookSecret ? "•••••••• (leave blank to keep)" : "optional"
+									hasWebhookSecret
+										? "•••••••• (leave blank to keep)"
+										: "optional"
 								}
 								className={`mt-1 ${fieldClass}`}
 							/>
 						</label>
-						<div className="flex items-center gap-2">
-							<Button type="submit" size="sm" disabled={busy}>
-								{connected ? "Update" : "Connect"}
-							</Button>
-							{connected && (
-								<Button
-									type="submit"
-									name="intent"
-									value="disconnect"
-									variant="outline"
-									size="sm"
-									disabled={busy}
-									className="text-destructive"
-									formNoValidate
-								>
-									Disconnect
-								</Button>
-							)}
-						</div>
-					</Form>
+					</div>
 				</section>
 
-				{/* Webhook */}
+				{/* Resources to pull */}
 				<section className={cardClass}>
-					<h2 className="text-sm font-medium text-foreground">Webhook endpoint</h2>
+					<h2 className="text-sm font-medium text-foreground">Data to pull</h2>
 					<p className="mt-1 text-xs text-muted-foreground">
-						Add this URL in {meta.name} and paste its {meta.webhookSecretLabel}{" "}
-						above. Verified events show up below.
+						Choose which {meta.name} resources Gray Office fetches. Everything
+						below is a read-only list endpoint.
 					</p>
-					<div className="mt-3">
-						<CopyField value={webhookUrl} />
-					</div>
-					<div className="mt-4">
-						<div className="text-xs font-medium text-muted-foreground">
-							Recent events
-						</div>
-						{events.length === 0 ? (
-							<p className="mt-2 text-xs text-muted-foreground">
-								{hasWebhookSecret
-									? "No events received yet."
-									: "Add a webhook secret to start receiving events."}
-							</p>
-						) : (
-							<ul className="mt-2 divide-y divide-border/60 text-xs">
-								{events.map((e) => (
-									<li
-										key={e.id}
-										className="flex items-center justify-between gap-3 py-2"
-									>
-										<span className="truncate text-foreground">
-											{e.summary ?? e.type}
-										</span>
-										<span className="shrink-0 text-muted-foreground">
-											{new Date(e.created_at * 1000).toLocaleString()}
-										</span>
-									</li>
-								))}
-							</ul>
-						)}
+					<div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+						{meta.resources.map((r) => (
+							<label
+								key={r.key}
+								className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-xs text-foreground has-checked:border-brand has-checked:bg-brand-tint"
+							>
+								<input
+									type="checkbox"
+									name="resource"
+									value={r.key}
+									defaultChecked={sel.has(r.key)}
+									className="size-3.5 accent-brand"
+								/>
+								{r.label}
+							</label>
+						))}
 					</div>
 				</section>
-			</div>
 
-			{/* Transactions */}
+				<div className="flex items-center gap-2 lg:col-span-2">
+					<Button type="submit" size="sm" disabled={busy}>
+						{connected ? "Save changes" : "Connect"}
+					</Button>
+					{connected && (
+						<Button
+							type="submit"
+							name="intent"
+							value="disconnect"
+							variant="outline"
+							size="sm"
+							disabled={busy}
+							className="text-destructive"
+							formNoValidate
+						>
+							Disconnect
+						</Button>
+					)}
+				</div>
+			</Form>
+
+			{/* Webhook */}
 			<section className={cardClass}>
-				<h2 className="text-sm font-medium text-foreground">
-					{meta.txLabel}
-				</h2>
-				{!connected ? (
-					<p className="mt-2 text-sm text-muted-foreground">
-						Connect {meta.name} to load {meta.txLabel.toLowerCase()}.
-					</p>
-				) : tx && "error" in tx ? (
-					<p className="mt-2 text-sm text-destructive">
-						Couldn’t load {meta.txLabel.toLowerCase()}: {tx.error}
-					</p>
-				) : !tx || tx.transactions.length === 0 ? (
-					<p className="mt-2 text-sm text-muted-foreground">
-						No {meta.txLabel.toLowerCase()} found.
-					</p>
-				) : (
-					<div className="mt-3 overflow-x-auto">
-						<table className="w-full min-w-[40rem] text-left text-sm">
-							<thead className="text-xs font-medium text-muted-foreground">
-								<tr className="h-9">
-									<th className="pr-4">ID</th>
-									<th className="pr-4">Amount</th>
-									<th className="pr-4">Status</th>
-									<th className="pr-4">Customer</th>
-									<th className="pr-4">Date</th>
-								</tr>
-							</thead>
-							<tbody>
-								{tx.transactions.map((t) => (
-									<tr
-										key={t.id}
-										className="h-11 border-t border-border/60 text-foreground/90"
-									>
-										<td className="pr-4 font-mono text-xs">{t.id}</td>
-										<td className="pr-4 font-medium text-foreground">
-											{money(t.amount, t.currency)}
-										</td>
-										<td className="pr-4">
-											<span className="rounded-md bg-muted px-2 py-0.5 text-xs capitalize">
-												{t.status}
-											</span>
-										</td>
-										<td className="max-w-[12rem] truncate pr-4">
-											{t.customer ?? "—"}
-										</td>
-										<td className="pr-4 whitespace-nowrap text-muted-foreground">
-											{t.createdAt
-												? new Date(t.createdAt * 1000).toLocaleDateString()
-												: "—"}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+				<h2 className="text-sm font-medium text-foreground">Webhook endpoint</h2>
+				<p className="mt-1 text-xs text-muted-foreground">
+					Add this URL in {meta.name} and paste its {meta.webhookSecretLabel}{" "}
+					above. Verified events show up here.
+				</p>
+				<div className="mt-3">
+					<CopyField value={webhookUrl} />
+				</div>
+				{events.length > 0 && (
+					<ul className="mt-3 divide-y divide-border/60 text-xs">
+						{events.map((e) => (
+							<li
+								key={e.id}
+								className="flex items-center justify-between gap-3 py-2"
+							>
+								<span className="truncate text-foreground">
+									{e.summary ?? e.type}
+								</span>
+								<span className="shrink-0 text-muted-foreground">
+									{new Date(e.created_at * 1000).toLocaleString()}
+								</span>
+							</li>
+						))}
+					</ul>
 				)}
 			</section>
+
+			{/* Pulled data */}
+			{!connected ? (
+				<section className={cardClass}>
+					<p className="text-sm text-muted-foreground">
+						Connect {meta.name} and pick some resources to see data here.
+					</p>
+				</section>
+			) : data.length === 0 ? (
+				<section className={cardClass}>
+					<p className="text-sm text-muted-foreground">
+						No resources selected. Tick some above and save.
+					</p>
+				</section>
+			) : (
+				data.map((d) => (
+					<section key={d.key} className={cardClass}>
+						<h2 className="text-sm font-medium text-foreground">{d.label}</h2>
+						{"error" in d.result ? (
+							<p className="mt-2 text-sm text-destructive">{d.result.error}</p>
+						) : d.result.records.length === 0 ? (
+							<p className="mt-2 text-sm text-muted-foreground">Nothing yet.</p>
+						) : (
+							<div className="mt-3 overflow-x-auto">
+								<table className="w-full min-w-[36rem] text-left text-sm">
+									<thead className="text-xs font-medium text-muted-foreground">
+										<tr className="h-9">
+											<th className="pr-4">ID</th>
+											<th className="pr-4">Detail</th>
+											<th className="pr-4">Status</th>
+											<th className="pr-4">Date</th>
+										</tr>
+									</thead>
+									<tbody>
+										{d.result.records.map((r) => (
+											<tr
+												key={r.id || r.detail}
+												className="h-10 border-t border-border/60 text-foreground/90"
+											>
+												<td className="pr-4 font-mono text-xs">{r.id || "—"}</td>
+												<td className="max-w-[16rem] truncate pr-4">
+													{r.detail}
+												</td>
+												<td className="pr-4">
+													{r.status ? (
+														<span className="rounded-md bg-muted px-2 py-0.5 text-xs capitalize">
+															{r.status}
+														</span>
+													) : (
+														"—"
+													)}
+												</td>
+												<td className="pr-4 whitespace-nowrap text-muted-foreground">
+													{r.when
+														? new Date(r.when * 1000).toLocaleDateString()
+														: "—"}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
+					</section>
+				))
+			)}
 		</div>
 	);
 }

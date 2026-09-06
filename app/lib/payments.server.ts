@@ -1,10 +1,11 @@
 /**
- * Payment gateway integrations: config CRUD, transaction fetch, and webhook
- * signature verification for Stripe, Razorpay, Cashfree, Polar and Dodo Payments.
+ * Payment gateway integrations: config CRUD, a map of every list/read API each
+ * gateway exposes, live data fetch, and webhook signature verification for
+ * Stripe, Razorpay, Cashfree, Polar and Dodo Payments.
  *
- * Each gateway exposes a REST API keyed by a secret the user pastes in on
- * /dashboard/integrations/<provider>. Transactions are fetched live (nothing is
- * cached); webhooks land at /api/payments/<provider>/webhook.
+ * The user connects a gateway on /dashboard/integrations/<provider>, picks which
+ * resources to pull (see `PROVIDER_APIS[provider].resources`), and the app
+ * fetches them live. Webhooks land at /api/payments/webhook/<provider>/<userId>.
  */
 
 export type Provider =
@@ -22,6 +23,8 @@ export const PROVIDER_IDS: Provider[] = [
 	"dodopayments",
 ];
 
+type Mode = "test" | "live";
+
 type Field = {
 	key: "api_key" | "api_secret" | "organization_id";
 	label: string;
@@ -30,43 +33,75 @@ type Field = {
 	extra?: boolean;
 };
 
+/** One list/read endpoint of a gateway that a user can choose to pull. */
+export type ResourceDef = {
+	key: string;
+	label: string;
+	/** relative to the provider base URL */
+	path: string;
+	method?: "GET" | "POST";
+	/** query params merged onto the request (values may reference the integration) */
+	query?: Record<string, string>;
+	/** JSON body for POST resources */
+	body?: unknown;
+	/** default pulls `data` then `items`; override for odd envelopes */
+	list?: string;
+};
+
 export type ProviderMeta = {
 	id: Provider;
 	name: string;
 	blurb: string;
 	docs: string;
 	webhookDocs: string;
-	/** what the "transactions" list actually shows for this gateway */
-	txLabel: string;
 	fields: Field[];
 	webhookSecretLabel: string;
-	/** how the webhook signature is checked */
 	webhookScheme: "stripe" | "razorpay" | "cashfree" | "standard-webhooks";
-	modes: Array<"test" | "live">;
+	modes: Mode[];
+	/** base API URL by mode */
+	base: (mode: Mode) => string;
+	/** minor-unit divisor for amount fields (Stripe/Razorpay/Polar/Dodo = 100) */
+	amountDivisor: number;
+	resources: ResourceDef[];
 };
 
-export const PROVIDERS: Record<Provider, ProviderMeta> = {
+// ── The API map ────────────────────────────────────────────────────────────
+
+const LIMIT = "25";
+
+export const PROVIDER_APIS: Record<Provider, ProviderMeta> = {
 	stripe: {
 		id: "stripe",
 		name: "Stripe",
-		blurb: "Cards, wallets and bank debits. Pulls recent charges.",
-		docs: "https://docs.stripe.com/api/charges/list",
+		blurb: "Cards, wallets and bank debits.",
+		docs: "https://docs.stripe.com/api",
 		webhookDocs: "https://docs.stripe.com/webhooks",
-		txLabel: "Charges",
-		fields: [
-			{ key: "api_key", label: "Secret key", placeholder: "sk_test_…" },
-		],
+		fields: [{ key: "api_key", label: "Secret key", placeholder: "sk_test_…" }],
 		webhookSecretLabel: "Signing secret (whsec_…)",
 		webhookScheme: "stripe",
 		modes: ["test", "live"],
+		base: () => "https://api.stripe.com/v1",
+		amountDivisor: 100,
+		resources: [
+			{ key: "charges", label: "Charges", path: "/charges", query: { limit: LIMIT } },
+			{ key: "payment_intents", label: "Payment intents", path: "/payment_intents", query: { limit: LIMIT } },
+			{ key: "checkout_sessions", label: "Checkout sessions", path: "/checkout/sessions", query: { limit: LIMIT } },
+			{ key: "refunds", label: "Refunds", path: "/refunds", query: { limit: LIMIT } },
+			{ key: "payouts", label: "Payouts", path: "/payouts", query: { limit: LIMIT } },
+			{ key: "balance_transactions", label: "Balance transactions", path: "/balance_transactions", query: { limit: LIMIT } },
+			{ key: "disputes", label: "Disputes", path: "/disputes", query: { limit: LIMIT } },
+			{ key: "invoices", label: "Invoices", path: "/invoices", query: { limit: LIMIT } },
+			{ key: "subscriptions", label: "Subscriptions", path: "/subscriptions", query: { limit: LIMIT } },
+			{ key: "customers", label: "Customers", path: "/customers", query: { limit: LIMIT } },
+			{ key: "products", label: "Products", path: "/products", query: { limit: LIMIT } },
+		],
 	},
 	razorpay: {
 		id: "razorpay",
 		name: "Razorpay",
-		blurb: "India-first payments. Pulls recent payments.",
-		docs: "https://razorpay.com/docs/api/payments/fetch-all-payments/",
+		blurb: "India-first payments and payouts.",
+		docs: "https://razorpay.com/docs/api/",
 		webhookDocs: "https://razorpay.com/docs/webhooks/validate-test/",
-		txLabel: "Payments",
 		fields: [
 			{ key: "api_key", label: "Key ID", placeholder: "rzp_test_…" },
 			{ key: "api_secret", label: "Key secret" },
@@ -74,15 +109,27 @@ export const PROVIDERS: Record<Provider, ProviderMeta> = {
 		webhookSecretLabel: "Webhook secret",
 		webhookScheme: "razorpay",
 		modes: ["test", "live"],
+		base: () => "https://api.razorpay.com/v1",
+		amountDivisor: 100,
+		resources: [
+			{ key: "payments", label: "Payments", path: "/payments", query: { count: LIMIT }, list: "items" },
+			{ key: "orders", label: "Orders", path: "/orders", query: { count: LIMIT }, list: "items" },
+			{ key: "refunds", label: "Refunds", path: "/refunds", query: { count: LIMIT }, list: "items" },
+			{ key: "settlements", label: "Settlements", path: "/settlements", query: { count: LIMIT }, list: "items" },
+			{ key: "payment_links", label: "Payment links", path: "/payment_links", list: "payment_links" },
+			{ key: "invoices", label: "Invoices", path: "/invoices", query: { count: LIMIT }, list: "items" },
+			{ key: "subscriptions", label: "Subscriptions", path: "/subscriptions", query: { count: LIMIT }, list: "items" },
+			{ key: "customers", label: "Customers", path: "/customers", query: { count: LIMIT }, list: "items" },
+			{ key: "disputes", label: "Disputes", path: "/disputes", list: "items" },
+			{ key: "transfers", label: "Transfers", path: "/transfers", query: { count: LIMIT }, list: "items" },
+		],
 	},
 	cashfree: {
 		id: "cashfree",
 		name: "Cashfree Payments",
-		blurb: "India payments & payouts. Pulls settlements (money received).",
-		docs: "https://www.cashfree.com/docs/api-reference/payments/latest/settlement-reconciliation/get-all-settlements",
-		webhookDocs:
-			"https://www.cashfree.com/docs/payments/online/webhooks/overview",
-		txLabel: "Settlements",
+		blurb: "India payments, settlements and payouts.",
+		docs: "https://www.cashfree.com/docs/api-reference/payments/latest/",
+		webhookDocs: "https://www.cashfree.com/docs/payments/online/webhooks/overview",
 		fields: [
 			{ key: "api_key", label: "Client ID (x-client-id)" },
 			{ key: "api_secret", label: "Client secret (x-client-secret)" },
@@ -90,54 +137,104 @@ export const PROVIDERS: Record<Provider, ProviderMeta> = {
 		webhookSecretLabel: "Client secret (used to sign webhooks)",
 		webhookScheme: "cashfree",
 		modes: ["test", "live"],
+		base: (m) =>
+			m === "live"
+				? "https://api.cashfree.com/pg"
+				: "https://sandbox.cashfree.com/pg",
+		amountDivisor: 1,
+		resources: [
+			{ key: "settlements", label: "Settlements", path: "/settlements", method: "POST", body: { pagination: { limit: 25 } }, list: "data" },
+			{ key: "settlement_recon", label: "Settlement reconciliation", path: "/settlement/recon", method: "POST", body: { pagination: { limit: 25 } }, list: "data" },
+			{ key: "disputes", label: "Disputes", path: "/disputes", list: "data" },
+		],
 	},
 	polar: {
 		id: "polar",
 		name: "Polar",
-		blurb: "Merchant of Record for software. Pulls recent orders.",
-		docs: "https://docs.polar.sh/api-reference/orders/list",
+		blurb: "Merchant of Record for software businesses.",
+		docs: "https://docs.polar.sh/api-reference",
 		webhookDocs: "https://docs.polar.sh/integrate/webhooks/endpoints",
-		txLabel: "Orders",
 		fields: [
 			{ key: "api_key", label: "Organization access token", placeholder: "polar_oat_…" },
-			{
-				key: "organization_id",
-				label: "Organization ID",
-				placeholder: "optional",
-				extra: true,
-			},
+			{ key: "organization_id", label: "Organization ID", placeholder: "optional", extra: true },
 		],
 		webhookSecretLabel: "Webhook secret",
 		webhookScheme: "standard-webhooks",
 		modes: ["test", "live"],
+		base: (m) =>
+			m === "live" ? "https://api.polar.sh/v1" : "https://sandbox-api.polar.sh/v1",
+		amountDivisor: 100,
+		resources: [
+			{ key: "orders", label: "Orders", path: "/orders", query: { limit: LIMIT }, list: "items" },
+			{ key: "payments", label: "Payments", path: "/payments", query: { limit: LIMIT }, list: "items" },
+			{ key: "refunds", label: "Refunds", path: "/refunds", query: { limit: LIMIT }, list: "items" },
+			{ key: "subscriptions", label: "Subscriptions", path: "/subscriptions", query: { limit: LIMIT }, list: "items" },
+			{ key: "checkouts", label: "Checkouts", path: "/checkouts", query: { limit: LIMIT }, list: "items" },
+			{ key: "customers", label: "Customers", path: "/customers", query: { limit: LIMIT }, list: "items" },
+			{ key: "products", label: "Products", path: "/products", query: { limit: LIMIT }, list: "items" },
+			{ key: "benefits", label: "Benefits", path: "/benefits", query: { limit: LIMIT }, list: "items" },
+			{ key: "discounts", label: "Discounts", path: "/discounts", query: { limit: LIMIT }, list: "items" },
+		],
 	},
 	dodopayments: {
 		id: "dodopayments",
 		name: "Dodo Payments",
-		blurb: "Merchant of Record for global digital sales. Pulls recent payments.",
-		docs: "https://docs.dodopayments.com/api-reference/payments/get-payments",
+		blurb: "Merchant of Record for global digital sales.",
+		docs: "https://docs.dodopayments.com/api-reference/introduction",
 		webhookDocs: "https://docs.dodopayments.com/developer-resources/webhooks",
-		txLabel: "Payments",
 		fields: [{ key: "api_key", label: "API key" }],
 		webhookSecretLabel: "Webhook signing key",
 		webhookScheme: "standard-webhooks",
 		modes: ["test", "live"],
+		base: (m) =>
+			m === "live"
+				? "https://live.dodopayments.com"
+				: "https://test.dodopayments.com",
+		amountDivisor: 100,
+		resources: [
+			{ key: "payments", label: "Payments", path: "/payments", query: { page_size: LIMIT }, list: "items" },
+			{ key: "subscriptions", label: "Subscriptions", path: "/subscriptions", query: { page_size: LIMIT }, list: "items" },
+			{ key: "refunds", label: "Refunds", path: "/refunds", query: { page_size: LIMIT }, list: "items" },
+			{ key: "disputes", label: "Disputes", path: "/disputes", query: { page_size: LIMIT }, list: "items" },
+			{ key: "payouts", label: "Payouts", path: "/payouts", query: { page_size: LIMIT }, list: "items" },
+			{ key: "customers", label: "Customers", path: "/customers", query: { page_size: LIMIT }, list: "items" },
+			{ key: "products", label: "Products", path: "/products", query: { page_size: LIMIT }, list: "items" },
+			{ key: "licenses", label: "License keys", path: "/license_keys", query: { page_size: LIMIT }, list: "items" },
+			{ key: "discounts", label: "Discounts", path: "/discounts", query: { page_size: LIMIT }, list: "items" },
+		],
 	},
 };
+
+/** Back-compat alias — some pages import PROVIDERS. */
+export const PROVIDERS = PROVIDER_APIS;
+
+export function resourceDef(provider: Provider, key: string): ResourceDef | undefined {
+	return PROVIDER_APIS[provider].resources.find((r) => r.key === key);
+}
 
 // ── DB ─────────────────────────────────────────────────────────────────────
 
 export type Integration = {
 	provider: Provider;
-	mode: "test" | "live";
+	mode: Mode;
 	api_key: string | null;
 	api_secret: string | null;
 	webhook_secret: string | null;
 	extra: Record<string, string>;
+	/** resource keys the user chose to pull */
+	resources: string[];
 	connected_at: number | null;
 };
 
-type Row = Omit<Integration, "extra"> & { extra: string | null };
+type Row = {
+	provider: Provider;
+	mode: Mode;
+	api_key: string | null;
+	api_secret: string | null;
+	webhook_secret: string | null;
+	extra: string | null;
+	connected_at: number | null;
+};
 
 export async function listIntegrations(
 	db: D1Database,
@@ -173,7 +270,20 @@ function hydrate(r: Row): Integration {
 	} catch {
 		/* ignore */
 	}
-	return { ...r, extra };
+	const resources = (extra.resources ?? "")
+		.split(",")
+		.map((s) => s.trim())
+		.filter(Boolean);
+	return {
+		provider: r.provider,
+		mode: r.mode,
+		api_key: r.api_key,
+		api_secret: r.api_secret,
+		webhook_secret: r.webhook_secret,
+		extra,
+		resources,
+		connected_at: r.connected_at,
+	};
 }
 
 export async function saveIntegration(
@@ -181,13 +291,17 @@ export async function saveIntegration(
 	userId: string,
 	provider: Provider,
 	input: {
-		mode: "test" | "live";
+		mode: Mode;
 		api_key?: string;
 		api_secret?: string;
 		webhook_secret?: string;
 		extra?: Record<string, string>;
+		resources?: string[];
 	},
 ): Promise<void> {
+	const extra = { ...(input.extra ?? {}) };
+	if (input.resources) extra.resources = input.resources.join(",");
+
 	await db
 		.prepare(
 			`INSERT INTO payment_integrations
@@ -208,7 +322,7 @@ export async function saveIntegration(
 			input.api_key || null,
 			input.api_secret || null,
 			input.webhook_secret || null,
-			JSON.stringify(input.extra ?? {}),
+			JSON.stringify(extra),
 		)
 		.run();
 }
@@ -243,181 +357,158 @@ export async function recentEvents(
 	return results ?? [];
 }
 
-// ── Transaction fetch ──────────────────────────────────────────────────────
+// ── Data fetch ─────────────────────────────────────────────────────────────
 
-export type Transaction = {
+export type Record_ = {
 	id: string;
-	amount: number | null;
-	currency: string;
-	status: string;
-	customer: string | null;
-	description: string | null;
-	createdAt: number | null; // unix seconds
+	detail: string;
+	status: string | null;
+	when: number | null; // unix seconds
 };
 
+function authHeaders(i: Integration): globalThis.Record<string, string> {
+	switch (i.provider) {
+		case "stripe":
+			return { authorization: `Bearer ${i.api_key}` };
+		case "razorpay":
+			return {
+				authorization: `Basic ${btoa(`${i.api_key}:${i.api_secret}`)}`,
+			};
+		case "cashfree":
+			return {
+				"x-client-id": i.api_key ?? "",
+				"x-client-secret": i.api_secret ?? "",
+				"x-api-version": "2025-01-01",
+				accept: "application/json",
+			};
+		case "polar":
+		case "dodopayments":
+			return { authorization: `Bearer ${i.api_key}` };
+	}
+}
+
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v)) || 0;
-const secs = (v: unknown) => {
+const secs = (v: unknown): number | null => {
+	if (v == null) return null;
 	if (typeof v === "number") return v > 1e12 ? Math.floor(v / 1000) : v;
 	const t = Date.parse(String(v));
 	return Number.isNaN(t) ? null : Math.floor(t / 1000);
 };
 
-export async function fetchTransactions(
-	i: Integration,
-): Promise<{ transactions: Transaction[] } | { error: string }> {
-	try {
-		switch (i.provider) {
-			case "stripe":
-				return { transactions: await stripeTx(i) };
-			case "razorpay":
-				return { transactions: await razorpayTx(i) };
-			case "cashfree":
-				return { transactions: await cashfreeTx(i) };
-			case "polar":
-				return { transactions: await polarTx(i) };
-			case "dodopayments":
-				return { transactions: await dodoTx(i) };
+const AMOUNT_KEYS = [
+	"amount",
+	"total_amount",
+	"amount_paid",
+	"amount_due",
+	"amount_settled",
+	"settlement_amount",
+	"net_amount",
+	"transfer_amount",
+	"order_amount",
+];
+const WHEN_KEYS = ["created", "created_at", "created_time", "date", "settlement_date", "start_at"];
+const WHO_KEYS = ["email", "customer_email", "contact", "name", "title", "description", "settlement_utr", "utr"];
+
+function normalizeRecord(rec: any, divisor: number): Record_ {
+	const id = String(
+		rec.id ??
+			rec.payment_id ??
+			rec.order_id ??
+			rec.subscription_id ??
+			rec.refund_id ??
+			rec.cf_settlement_id ??
+			rec.settlement_id ??
+			rec.dispute_id ??
+			rec.short_url ??
+			"",
+	);
+
+	let money: string | null = null;
+	for (const k of AMOUNT_KEYS) {
+		if (typeof rec[k] === "number" || (rec[k] && !Number.isNaN(Number(rec[k])))) {
+			const cur = String(
+				rec.currency ?? rec.settlement_currency ?? rec.order_currency ?? "",
+			).toUpperCase();
+			const val = num(rec[k]) / divisor;
+			money = cur ? `${val} ${cur}` : String(val);
+			break;
 		}
+	}
+
+	let who: string | null = null;
+	const c = rec.customer ?? rec.user ?? {};
+	who =
+		(typeof c === "object" ? c.email ?? c.name ?? c.customer_id : c) ?? null;
+	if (!who) for (const k of WHO_KEYS) if (rec[k]) { who = String(rec[k]); break; }
+
+	let when: number | null = null;
+	for (const k of WHEN_KEYS) if (rec[k] != null) { when = secs(rec[k]); if (when) break; }
+
+	const detail = [money, who].filter(Boolean).join(" · ") || id || "record";
+	return {
+		id,
+		detail,
+		status: rec.status ?? rec.state ?? rec.settlement_status ?? null,
+		when,
+	};
+}
+
+export async function fetchResource(
+	i: Integration,
+	resourceKey: string,
+): Promise<{ records: Record_[] } | { error: string }> {
+	const meta = PROVIDER_APIS[i.provider];
+	const def = meta.resources.find((r) => r.key === resourceKey);
+	if (!def) return { error: `Unknown resource "${resourceKey}"` };
+
+	try {
+		const url = new URL(meta.base(i.mode) + def.path);
+		for (const [k, v] of Object.entries(def.query ?? {})) url.searchParams.set(k, v);
+		if (i.provider === "polar" && i.extra.organization_id)
+			url.searchParams.set("organization_id", i.extra.organization_id);
+
+		const method = def.method ?? "GET";
+		const headers = authHeaders(i);
+		let body: string | undefined;
+		if (method === "POST" && def.body) {
+			headers["content-type"] = "application/json";
+			body = JSON.stringify(def.body);
+		}
+
+		const res = await fetch(url, { method, headers, body });
+		const text = await res.text();
+		let json: any = null;
+		try {
+			json = JSON.parse(text);
+		} catch {
+			/* ignore */
+		}
+		if (!res.ok) {
+			const msg =
+				json?.error?.message ||
+				json?.message ||
+				json?.error?.description ||
+				json?.error ||
+				text.slice(0, 200);
+			throw new Error(`${res.status}: ${msg}`);
+		}
+
+		const arr: any[] =
+			(def.list && json?.[def.list]) ??
+			json?.data ??
+			json?.items ??
+			(Array.isArray(json) ? json : []);
+		return { records: arr.slice(0, 25).map((r) => normalizeRecord(r, meta.amountDivisor)) };
 	} catch (err) {
 		return { error: err instanceof Error ? err.message : String(err) };
 	}
-}
-
-async function json(res: Response): Promise<any> {
-	const body = await res.text();
-	let parsed: any;
-	try {
-		parsed = JSON.parse(body);
-	} catch {
-		parsed = null;
-	}
-	if (!res.ok) {
-		const msg =
-			parsed?.error?.message ||
-			parsed?.message ||
-			parsed?.error ||
-			body.slice(0, 200);
-		throw new Error(`${res.status}: ${msg}`);
-	}
-	return parsed;
-}
-
-async function stripeTx(i: Integration): Promise<Transaction[]> {
-	const j = await json(
-		await fetch("https://api.stripe.com/v1/charges?limit=25", {
-			headers: { authorization: `Bearer ${i.api_key}` },
-		}),
-	);
-	return (j.data ?? []).map((c: any) => ({
-		id: c.id,
-		amount: num(c.amount) / 100,
-		currency: String(c.currency ?? "usd").toUpperCase(),
-		status: c.status,
-		customer: c.billing_details?.email ?? c.receipt_email ?? c.customer ?? null,
-		description: c.description ?? null,
-		createdAt: secs(c.created),
-	}));
-}
-
-async function razorpayTx(i: Integration): Promise<Transaction[]> {
-	const auth = btoa(`${i.api_key}:${i.api_secret}`);
-	const j = await json(
-		await fetch("https://api.razorpay.com/v1/payments?count=25", {
-			headers: { authorization: `Basic ${auth}` },
-		}),
-	);
-	return (j.items ?? []).map((p: any) => ({
-		id: p.id,
-		amount: num(p.amount) / 100,
-		currency: p.currency ?? "INR",
-		status: p.status,
-		customer: p.email ?? p.contact ?? null,
-		description: p.description ?? p.method ?? null,
-		createdAt: secs(p.created_at),
-	}));
-}
-
-async function cashfreeTx(i: Integration): Promise<Transaction[]> {
-	const base =
-		i.mode === "live"
-			? "https://api.cashfree.com/pg"
-			: "https://sandbox.cashfree.com/pg";
-	const j = await json(
-		await fetch(`${base}/settlements`, {
-			method: "POST",
-			headers: {
-				"x-client-id": i.api_key ?? "",
-				"x-client-secret": i.api_secret ?? "",
-				"x-api-version": "2025-01-01",
-				"content-type": "application/json",
-			},
-			body: JSON.stringify({ pagination: { limit: 25 } }),
-		}),
-	);
-	const items = j.data ?? j.settlements ?? [];
-	return items.map((s: any) => ({
-		id: String(s.cf_settlement_id ?? s.settlement_id ?? s.transfer_id ?? ""),
-		amount: num(s.amount_settled ?? s.settlement_amount ?? s.transfer_amount),
-		currency: "INR",
-		status: s.status ?? s.settlement_status ?? s.transfer_status ?? "unknown",
-		customer: s.settlement_utr ?? s.utr ?? null,
-		description: "Settlement",
-		createdAt: secs(s.settlement_date ?? s.transfer_time ?? s.created_at),
-	}));
-}
-
-async function polarTx(i: Integration): Promise<Transaction[]> {
-	const base =
-		i.mode === "live" ? "https://api.polar.sh" : "https://sandbox-api.polar.sh";
-	const url = new URL(`${base}/v1/orders`);
-	url.searchParams.set("limit", "25");
-	if (i.extra.organization_id)
-		url.searchParams.set("organization_id", i.extra.organization_id);
-	const j = await json(
-		await fetch(url, { headers: { authorization: `Bearer ${i.api_key}` } }),
-	);
-	return (j.items ?? []).map((o: any) => ({
-		id: o.id,
-		amount: num(o.amount ?? o.total_amount ?? o.net_amount) / 100,
-		currency: String(o.currency ?? "usd").toUpperCase(),
-		status: o.status ?? (o.paid ? "paid" : "pending"),
-		customer: o.customer?.email ?? o.user?.email ?? null,
-		description: o.product?.name ?? o.product_id ?? null,
-		createdAt: secs(o.created_at),
-	}));
-}
-
-async function dodoTx(i: Integration): Promise<Transaction[]> {
-	const base =
-		i.mode === "live"
-			? "https://live.dodopayments.com"
-			: "https://test.dodopayments.com";
-	const j = await json(
-		await fetch(`${base}/payments?page_size=25`, {
-			headers: { authorization: `Bearer ${i.api_key}` },
-		}),
-	);
-	const items = j.items ?? j.data ?? [];
-	return items.map((p: any) => ({
-		id: p.payment_id ?? p.id,
-		amount: num(p.total_amount ?? p.amount ?? p.settlement_amount) / 100,
-		currency: p.currency ?? p.settlement_currency ?? "USD",
-		status: p.status,
-		customer: p.customer?.email ?? p.customer?.customer_id ?? null,
-		description:
-			p.product_cart?.[0]?.product_id ?? p.payment_method ?? null,
-		createdAt: secs(p.created_at),
-	}));
 }
 
 // ── Webhook verification ───────────────────────────────────────────────────
 
 const enc = new TextEncoder();
 
-async function hmac(
-	keyData: BufferSource,
-	msg: string,
-): Promise<ArrayBuffer> {
+async function hmac(keyData: BufferSource, msg: string): Promise<ArrayBuffer> {
 	const key = await crypto.subtle.importKey(
 		"raw",
 		keyData,
@@ -439,10 +530,6 @@ function safeEqual(a: string, b: string): boolean {
 	return d === 0;
 }
 
-/**
- * Verify a webhook and return its event type + a one-line summary, or null if
- * the signature does not check out.
- */
 export async function verifyWebhook(
 	provider: Provider,
 	rawBody: string,
@@ -458,8 +545,7 @@ export async function verifyWebhook(
 	} catch {
 		/* keep {} */
 	}
-	const type: string =
-		body.type || body.event || body.event_type || "event";
+	const type: string = body.type || body.event || body.event_type || "event";
 	const data = body.data?.object ?? body.data ?? body.payload ?? body;
 	const amount = data.amount ?? data.total_amount ?? data.order_amount;
 	const summary = amount
@@ -474,7 +560,7 @@ async function checkSignature(
 	headers: Headers,
 	secret: string,
 ): Promise<boolean> {
-	const scheme = PROVIDERS[provider].webhookScheme;
+	const scheme = PROVIDER_APIS[provider].webhookScheme;
 	try {
 		if (scheme === "stripe") {
 			const header = headers.get("stripe-signature") ?? "";

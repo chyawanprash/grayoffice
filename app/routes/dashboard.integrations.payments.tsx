@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import type { Route } from "./+types/dashboard.integrations.payments";
 import { requireUserId } from "~/lib/auth.server";
 import { Button } from "~/components/ui/button";
-import { PROVIDERS, PROVIDER_IDS, listIntegrations } from "~/lib/payments.server";
+import { PROVIDER_APIS, PROVIDER_IDS, listIntegrations } from "~/lib/payments.server";
 
 export function meta() {
 	return [{ title: "Payment gateways | Gray Office" }];
@@ -15,9 +15,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	return {
 		providers: PROVIDER_IDS.map((id) => ({
 			id,
-			name: PROVIDERS[id].name,
-			blurb: PROVIDERS[id].blurb,
-			txLabel: PROVIDERS[id].txLabel,
+			name: PROVIDER_APIS[id].name,
+			blurb: PROVIDER_APIS[id].blurb,
+			resourceCount: PROVIDER_APIS[id].resources.length,
+			pulling: connected[id]?.resources.length ?? 0,
 			connected: Boolean(connected[id]?.api_key),
 			mode: connected[id]?.mode ?? null,
 		})),
@@ -42,7 +43,7 @@ export default function PaymentGateways({ loaderData }: Route.ComponentProps) {
 					<thead className="text-xs font-medium text-muted-foreground">
 						<tr className="h-11 border-b border-border">
 							<th className="px-4">Gateway</th>
-							<th className="px-4">Pulls</th>
+							<th className="px-4">Data</th>
 							<th className="px-4">Status</th>
 							<th className="px-4 text-right">Action</th>
 						</tr>
@@ -57,7 +58,11 @@ export default function PaymentGateways({ loaderData }: Route.ComponentProps) {
 									<div className="font-medium text-foreground">{p.name}</div>
 									<div className="text-xs text-muted-foreground">{p.blurb}</div>
 								</td>
-								<td className="px-4 text-muted-foreground">{p.txLabel}</td>
+								<td className="px-4 text-muted-foreground">
+									{p.connected
+										? `${p.pulling} of ${p.resourceCount} resources`
+										: `${p.resourceCount} resources`}
+								</td>
 								<td className="px-4">
 									<span
 										className={`rounded-md px-2 py-0.5 text-xs font-medium ${

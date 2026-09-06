@@ -14,7 +14,7 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 # Resend — https://resend.com/api-keys
 RESEND_API_KEY="re_your_api_key"
-RESEND_FROM="Gray Office <login@yourdomain.com>"
+RESEND_FROM="Gray Office <hello@grayoffice.app>"
 
 # Pinecone — https://app.pinecone.io
 PINECONE_API_KEY="pcsk_your_api_key"
