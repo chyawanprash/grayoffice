@@ -236,16 +236,31 @@ body::before {
 @property --ai-s6 { syntax: "<angle>"; inherits: false; initial-value: 84deg; }
 
 .ai-lights-card {
-	--border-line: #e6e6e6;
+	--border-line: #e2e2e4;
 	--ease-out: cubic-bezier(0.26, 0.94, 0.6, 1);
-	--s-surface-2: #fbfbfb;
-	--s-surface-1: #f4f4f4;
-	--s-border-1: #dedede;
+	--s-surface-2: #f1f1f2;
+	--s-surface-1: #e9e9eb;
+	--s-border-1: #d8d8db;
 	--s-text-primary: #1b1b1b;
 	--s-text-body: #3a3a3a;
 	--s-text-muted: #8a8a8a;
 	--s-text-subtle: #a6a6a6;
 	--s-text-inverse: #ffffff;
+}
+
+.dark .ai-lights-card {
+	--ai-bg1: #101012;
+	--ai-bg2: #0e0e10;
+	--ai-bg3: #0d0d0f;
+	--border-line: #2a2a2e;
+	--s-surface-2: #1e1e1e;
+	--s-surface-1: #262629;
+	--s-border-1: #33333a;
+	--s-text-primary: #ededed;
+	--s-text-body: #c4c4cc;
+	--s-text-muted: #8a8a93;
+	--s-text-subtle: #6b6b73;
+	--s-text-inverse: #0b0b0c;
 }
 
 .ai-lights-layer {

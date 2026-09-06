@@ -228,6 +228,10 @@ export function rollPalette(el: HTMLElement) {
 		(Math.random() < 0.5 ? -1 : 1);
 	const at = (t: number) => anchor + arc * t;
 
+	const dark =
+		typeof document !== "undefined" &&
+		document.documentElement.classList.contains("dark");
+
 	const s = el.style;
 	s.setProperty("--ai-c1", hsl(at(0), 96, 48));
 	s.setProperty("--ai-c2", hsl(at(0.18), 52, 80));
@@ -236,7 +240,15 @@ export function rollPalette(el: HTMLElement) {
 	s.setProperty("--ai-c5", hsl(at(0.88), 94, 50));
 	s.setProperty("--ai-c6", hsl(at(1), 90, 72, 0.8));
 	s.setProperty("--ai-tail", hsl(at(-0.12), 70, 76, 0.63));
-	s.setProperty("--ai-bg1", hsl(at(0), 62, 97));
-	s.setProperty("--ai-bg2", hsl(at(0.5), 54, 95));
-	s.setProperty("--ai-bg3", hsl(at(1), 58, 93));
+	// Card face: near-white tints in light mode; deep near-black tints in dark so
+	// it sits seamlessly on the dark page.
+	if (dark) {
+		s.setProperty("--ai-bg1", hsl(at(0), 20, 9));
+		s.setProperty("--ai-bg2", hsl(at(0.5), 16, 8));
+		s.setProperty("--ai-bg3", hsl(at(1), 18, 7));
+	} else {
+		s.setProperty("--ai-bg1", hsl(at(0), 30, 95));
+		s.setProperty("--ai-bg2", hsl(at(0.5), 24, 93));
+		s.setProperty("--ai-bg3", hsl(at(1), 26, 91));
+	}
 }

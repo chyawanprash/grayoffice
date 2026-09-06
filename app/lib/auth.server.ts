@@ -341,6 +341,18 @@ export async function disableTotp(db: D1Database, userId: string): Promise<void>
 		.run();
 }
 
+/** Set the user's display name (empty string clears it). */
+export async function setName(
+	db: D1Database,
+	userId: string,
+	name: string,
+): Promise<void> {
+	await db
+		.prepare("UPDATE users SET name = ? WHERE id = ?")
+		.bind(name.trim() || null, userId)
+		.run();
+}
+
 /** Set (or replace) a user's password. */
 export async function setPassword(
 	db: D1Database,

@@ -5,6 +5,7 @@ import { getUser, logout, requireUserId } from "~/lib/auth.server";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { DashboardSidebar } from "~/components/medesk/sidebar";
 import { DashboardTopbar } from "~/components/medesk/topbar";
+import { ChatWidget } from "~/components/medesk/chat-widget";
 import "~/components/medesk/dashboard.css";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -30,11 +31,12 @@ export default function DashboardLayout({ loaderData }: Route.ComponentProps) {
 			>
 				<DashboardSidebar user={user} />
 				<main className="flex flex-1 flex-col overflow-hidden bg-sidebar p-0 md:p-2 md:pl-0">
-					<div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl">
+					<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-xl">
 						<DashboardTopbar />
 						<div className="flex-1 overflow-y-auto">
 							<Outlet />
 						</div>
+						<ChatWidget />
 					</div>
 				</main>
 			</SidebarProvider>
