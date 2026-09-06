@@ -121,7 +121,7 @@ export function SiteFooter() {
 								<Logo />
 								<p className="mb-8 mt-6 max-w-sm text-sm leading-relaxed text-neutral-500">
 									The agent that runs your close, reconciliation, and cash
-									reporting end to end — exceptions and human review included.
+									reporting end to end, exceptions and human review included.
 								</p>
 								<div className="flex items-center gap-3">
 									{SOCIALS.map(({ label, href, Icon }) => (

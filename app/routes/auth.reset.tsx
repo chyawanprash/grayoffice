@@ -16,7 +16,7 @@ import {
 import { sendOtpEmail } from "~/lib/email.server";
 
 export function meta() {
-	return [{ title: "Reset password — Gray Office" }];
+	return [{ title: "Reset password | Gray Office" }];
 }
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -103,7 +103,7 @@ export default function ResetPassword({ actionData }: Route.ComponentProps) {
 
 				{devCode && (
 					<p className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-						Dev mode — your code is{" "}
+						Dev mode - your code is{" "}
 						<span className="font-semibold tracking-wide">{devCode}</span>
 					</p>
 				)}

@@ -6,7 +6,7 @@ import { requireUserId } from "~/lib/auth.server";
 import { Button } from "~/components/ui/button";
 
 export function meta() {
-	return [{ title: "Integrations — Gray Office" }];
+	return [{ title: "Integrations | Gray Office" }];
 }
 
 type Source = "slack" | "telegram" | "discord";
@@ -216,7 +216,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 													month: "short",
 													day: "numeric",
 												})
-											: "—"
+											: "-"
 									}
 								/>
 							</dl>
@@ -258,7 +258,7 @@ export default function Integrations({ loaderData, actionData }: Route.Component
 				<h2 className="text-sm font-medium text-foreground">Test the pipeline</h2>
 				<p className="mt-1 text-xs text-muted-foreground">
 					POSTs to <code className="font-mono">/api/bots/ingest</code> exactly
-					like the bots do — AI routing included — and logs it to the Audit room.
+					like the bots do (AI routing included) and logs it to the Audit room.
 				</p>
 
 				<Form method="post" className="mt-3 space-y-3">

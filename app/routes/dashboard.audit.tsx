@@ -3,7 +3,7 @@ import type { Route } from "./+types/dashboard.audit";
 import { requireUserId } from "~/lib/auth.server";
 
 export function meta() {
-	return [{ title: "Audit room — Gray Office" }];
+	return [{ title: "Audit room | Gray Office" }];
 }
 
 type Event = {
@@ -101,7 +101,7 @@ export default function AuditRoom({ loaderData }: Route.ComponentProps) {
 									{new Date(e.created_at * 1000).toLocaleString()}
 								</td>
 								<td className="px-4 py-3 capitalize text-neutral-700">{e.source}</td>
-								<td className="px-4 py-3 text-neutral-600">{e.external_user ?? "—"}</td>
+								<td className="px-4 py-3 text-neutral-600">{e.external_user ?? "-"}</td>
 								<td className="max-w-md px-4 py-3 text-neutral-800">
 									{e.summary}
 									{e.status === "error" && e.detail && (
@@ -110,7 +110,7 @@ export default function AuditRoom({ loaderData }: Route.ComponentProps) {
 										</span>
 									)}
 								</td>
-								<td className="px-4 py-3 text-neutral-600">{e.route ?? "—"}</td>
+								<td className="px-4 py-3 text-neutral-600">{e.route ?? "-"}</td>
 								<td className="px-4 py-3">
 									<span
 										className={`rounded-md px-2 py-0.5 text-xs font-medium ${

@@ -8,7 +8,7 @@
  *   { "source": "telegram", "externalUser": "@ada",
  *     "text": "...", "files": [{ "name": "invoice.pdf", "url": "https://...", "mime": "application/pdf" }] }
  *
- * Responds 200 { id, route, status, detail } once processed. Runs synchronously —
+ * Responds 200 { id, route, status, detail } once processed. Runs synchronously:
  * a PDF conversion takes a few seconds; give the client a generous timeout.
  */
 import { Hono } from "hono";

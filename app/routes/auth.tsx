@@ -17,7 +17,7 @@ import { sendOtpEmail } from "~/lib/email.server";
 import { googleConfigured } from "~/lib/google.server";
 
 export function meta() {
-	return [{ title: "Sign in — Gray Office" }];
+	return [{ title: "Sign in | Gray Office" }];
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {

@@ -14,7 +14,7 @@ import { createEmailOtp, peekDevOtp, verifyEmailOtp } from "~/lib/mfa.server";
 import { sendOtpEmail } from "~/lib/email.server";
 
 export function meta() {
-	return [{ title: "Confirm your email — Gray Office" }];
+	return [{ title: "Confirm your email | Gray Office" }];
 }
 
 function maskEmail(email: string): string {
@@ -95,7 +95,7 @@ export default function VerifyEmail({ actionData, loaderData }: Route.ComponentP
 
 				{loaderData.devCode && (
 					<p className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-						Dev mode — your code is <span className="font-semibold tracking-wide">{loaderData.devCode}</span>
+						Dev mode - your code is <span className="font-semibold tracking-wide">{loaderData.devCode}</span>
 					</p>
 				)}
 

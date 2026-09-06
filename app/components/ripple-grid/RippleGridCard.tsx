@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { RippleGrid } from "./engine";
 import { useTheme } from "~/components/theme";
 
-// Blob / field colors per theme — the field matches the section the card sits in
+// Blob / field colors per theme - the field matches the section the card sits in
 // so the card reads as seamless.
 const THEME_COLORS = {
   light: { ink: "#1b1b1b", paper: "#fcfcfc" },

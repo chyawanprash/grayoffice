@@ -14,7 +14,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 }
 
 export function meta({ data }: Route.MetaArgs) {
-	return [{ title: `${data?.name ?? "Dashboard"} — Gray Office` }];
+	return [{ title: `${data?.name ?? "Dashboard"} | Gray Office` }];
 }
 
 export default function DashboardSection({ loaderData }: Route.ComponentProps) {

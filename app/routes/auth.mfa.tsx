@@ -20,7 +20,7 @@ import { sendOtpEmail } from "~/lib/email.server";
 import { verifyTotp } from "~/lib/totp.server";
 
 export function meta() {
-	return [{ title: "Two-factor verification — Gray Office" }];
+	return [{ title: "Two-factor verification | Gray Office" }];
 }
 
 function maskEmail(email: string): string {
@@ -121,7 +121,7 @@ export default function MfaChallenge({ actionData, loaderData }: Route.Component
 
 				{mode === "email" && loaderData.devCode && (
 					<p className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-						Dev mode — your code is <span className="font-semibold tracking-wide">{loaderData.devCode}</span>
+						Dev mode - your code is <span className="font-semibold tracking-wide">{loaderData.devCode}</span>
 					</p>
 				)}
 

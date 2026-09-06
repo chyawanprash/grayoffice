@@ -83,7 +83,7 @@ function Row({
 	);
 }
 
-/* -- 1. Close workflow — three steps of the month-end close, the middle one
+/* -- 1. Close workflow - three steps of the month-end close, the middle one
    running. Sequence is the one thing this surface has that the others don't. */
 function Step({
 	label,
@@ -148,7 +148,7 @@ function BlockContent() {
 	);
 }
 
-/* -- 2. Progress — the close ticking through its checklist. */
+/* -- 2. Progress - the close ticking through its checklist. */
 function ProgressContent() {
 	return (
 		<span className="block w-[258px]">
@@ -188,7 +188,7 @@ function ProgressContent() {
 	);
 }
 
-/* -- 3. Terminal — the only variant that inverts. `$` marks the command. */
+/* -- 3. Terminal - the only variant that inverts. `$` marks the command. */
 function TerminalContent() {
 	return (
 		<span className="block w-[236px] space-y-2 font-mono">
@@ -204,7 +204,7 @@ function TerminalContent() {
 	);
 }
 
-/* -- 4. Prompt bar — ask the finance agent; the run button sits in the trail. */
+/* -- 4. Prompt bar - ask the finance agent; the run button sits in the trail. */
 function WandContent() {
 	return (
 		<span className="block w-[288px]">

@@ -1,5 +1,5 @@
 /**
- * Queue consumer — processes individual model×prompt test jobs via AI Gateway.
+ * Queue consumer - processes individual model×prompt test jobs via AI Gateway.
  * Each job writes its result to a separate KV key to avoid race conditions.
  */
 import { RETENTION_DAYS, SYSTEM_PROMPT } from "../src/config";
@@ -81,7 +81,7 @@ async function executeJob(env: Env, job: QueueJob): Promise<Citation> {
 }
 
 /**
- * Universal model caller — all models go through env.AI.run() with AI Gateway.
+ * Universal model caller - all models go through env.AI.run() with AI Gateway.
  * Handles OpenAI/Anthropic (messages format) and Gemini (contents format).
  * Falls back to mock responses when AI binding is unavailable.
  */

@@ -25,7 +25,7 @@ app.post("/api/pdf", async (c) => {
 	return c.json(await pdfToJson(c.env, { name: b.name ?? "file.pdf", url: b.url }));
 });
 
-// SSR catch-all — React Router handles everything else (GET + form POSTs)
+// SSR catch-all - React Router handles everything else (GET + form POSTs)
 app.all("*", (c) => {
 	const requestHandler = createRequestHandler(
 		() => import("virtual:react-router/server-build"),

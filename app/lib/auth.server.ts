@@ -368,7 +368,7 @@ export async function setPassword(
 
 /** Permanently delete a user and everything scoped to them. */
 export async function deleteUser(db: D1Database, userId: string): Promise<void> {
-	// Explicit child deletes — D1 doesn't enforce the ON DELETE CASCADE FKs.
+	// Explicit child deletes - D1 doesn't enforce the ON DELETE CASCADE FKs.
 	await db.batch([
 		db.prepare("DELETE FROM mfa_recovery_codes WHERE user_id = ?").bind(userId),
 		db.prepare("DELETE FROM email_otps WHERE user_id = ?").bind(userId),

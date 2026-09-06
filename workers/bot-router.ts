@@ -34,7 +34,7 @@ const CHAT_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 const CHAT_SYSTEM = `You are the Gray Office finance operations assistant, replying
 to a user over a chat bot (Slack / Telegram / Discord). Help with closing the
 books, reconciliations, invoices, cash reports and GST / jurisdiction questions.
-Be concise and specific — a chat reply, not an essay. Show the numbers and the
+Be concise and specific - a chat reply, not an essay. Show the numbers and the
 working when relevant. Flag anything that needs a human's judgement instead of
 guessing.`;
 
@@ -50,7 +50,7 @@ async function routeByText(_env: Env, text: string): Promise<RouteName> {
 	return text.trim() ? "ask" : "unhandled";
 }
 
-/** Free-text Q&A backed by Workers AI — the bots' "use the backend's AI" path. */
+/** Free-text Q&A backed by Workers AI - the bots' "use the backend's AI" path. */
 export async function askAgent(env: Env, msg: Inbound): Promise<{ reply: string }> {
 	if (!env.AI || !msg.text.trim())
 		return { reply: "Ask me a finance operations question and I'll help." };

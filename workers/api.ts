@@ -660,7 +660,7 @@ Respond with ONLY valid JSON:
 			});
 		} else if (competitorList.length === 1) {
 			fallback.push({
-				text: `Compare ${brand} vs ${competitorList[0]} — which is better?`,
+				text: `Compare ${brand} vs ${competitorList[0]} - which is better?`,
 				tag: "Competitive",
 			});
 			fallback.push({

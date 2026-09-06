@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * Shared shell for transactional emails. Inline styles only — email clients
+ * Shared shell for transactional emails. Inline styles only - email clients
  * ignore <style> and external CSS.
  */
 export function EmailLayout({

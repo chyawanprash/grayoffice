@@ -1,5 +1,5 @@
 /**
- * Thin Pinecone client over the REST API — no SDK, works in Workers.
+ * Thin Pinecone client over the REST API - no SDK, works in Workers.
  * Used as long-term memory for the finance agent. Every call is a no-op that
  * returns empty when PINECONE_API_KEY / PINECONE_HOST are unset, so the agent
  * still runs locally without a Pinecone project.
@@ -67,7 +67,7 @@ export async function forget(env: Env, userId: string): Promise<void> {
 	try {
 		await pc(env, "/vectors/delete", { namespace: userId, deleteAll: true });
 	} catch {
-		// namespace may not exist yet — nothing to clean up
+		// namespace may not exist yet - nothing to clean up
 	}
 }
 

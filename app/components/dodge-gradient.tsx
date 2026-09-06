@@ -22,7 +22,7 @@ export function DodgeGradient({ colors = RAINBOW }: { colors?: string[] }) {
 				width: "100%",
 				opacity: dark ? 0.72 : 1,
 				background: [
-					// top cover — fades the bloom into the page surface
+					// top cover - fades the bloom into the page surface
 					`linear-gradient(0deg, transparent 34%, ${surface} 94%)`,
 					// black -> surface ramp, color-dodged over the rainbow
 					`linear-gradient(0deg, #000000 0%, ${rampTop} 100%)`,

@@ -5,7 +5,7 @@ import { DodgeGradient } from "./dodge-gradient";
 /**
  * A quiet zone below the footer. It sits empty until you scroll to the very
  * bottom of the page, where the Dia-style glow rises from the floor. No snap,
- * no scroll hijack — just a scroll-linked reveal.
+ * no scroll hijack - just a scroll-linked reveal.
  */
 export function FooterGradient({ children }: { children: ReactNode }) {
 	const ref = useRef<HTMLDivElement>(null);

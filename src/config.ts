@@ -1,5 +1,5 @@
 /**
- * Brand Visibility Tester — Configuration
+ * Brand Visibility Tester - Configuration
  *
  * All models run through Cloudflare AI Gateway (Unified Billing).
  * Third-party models (OpenAI, Anthropic, Google) are billed via Unified Billing credits.
@@ -8,7 +8,7 @@
  */
 
 export type ModelConfig = {
-	/** Model ID — @cf/ for Workers AI, author/model for third-party via gateway */
+	/** Model ID - @cf/ for Workers AI, author/model for third-party via gateway */
 	id: string;
 	/** Display name */
 	name: string;
@@ -29,7 +29,7 @@ export type ModelConfig = {
 };
 
 /**
- * All models — run via env.AI.run() with gateway: { id: "default" }
+ * All models - run via env.AI.run() with gateway: { id: "default" }
  * Third-party models use Unified Billing (no API keys).
  * Workers AI models use standard pricing.
  */

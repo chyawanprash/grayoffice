@@ -47,8 +47,8 @@ export async function sendOtpEmail(
 ): Promise<void> {
 	const subjects: Record<OtpPurpose, string> = {
 		mfa: `${code} is your Gray Office sign-in code`,
-		verify: `${code} — confirm your email`,
-		reset: `${code} — reset your password`,
+		verify: `${code} - confirm your email`,
+		reset: `${code} - reset your password`,
 	};
 	await sendEmail(env, {
 		to,

@@ -20,7 +20,7 @@ import { forget } from "~/lib/pinecone.server";
 import { newTotpSecret, totpQrSvg, totpUri, verifyTotp } from "~/lib/totp.server";
 
 export function meta() {
-	return [{ title: "Settings — Gray Office" }];
+	return [{ title: "Settings | Gray Office" }];
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -248,7 +248,7 @@ export default function Settings({ actionData, loaderData }: Route.ComponentProp
 									loaderData.googleLinked && "Google",
 								]
 									.filter(Boolean)
-									.join(" · ") || "—"}
+									.join(" · ") || "-"}
 							</dd>
 						</div>
 						<div className="flex justify-between py-2.5">

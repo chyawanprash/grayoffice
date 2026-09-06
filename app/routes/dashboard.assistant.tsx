@@ -5,7 +5,7 @@ import { PaperPlaneRight, Sparkle, Wrench } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
 
 export function meta() {
-	return [{ title: "Assistant — Gray Office" }];
+	return [{ title: "Assistant | Gray Office" }];
 }
 
 export default function Assistant() {

@@ -18,7 +18,7 @@ import { Button } from "~/components/ui/button";
 
 export function meta() {
 	return [
-		{ title: "Gray Office — the finance ops agent" },
+		{ title: "Gray Office | the finance ops agent" },
 		{
 			name: "description",
 			content:
@@ -98,7 +98,7 @@ export default function Home() {
 					<p className="mt-5 max-w-lg text-lg leading-relaxed text-neutral-600">
 						Gray Office takes over the repetitive work of closing the books,
 						reconciling accounts, processing invoices, and preparing cash
-						reports — exceptions and human review included.
+						reports, exceptions and human review included.
 					</p>
 					<div className="mt-8 flex flex-wrap items-center gap-3">
 						<Button render={<Link to="/sign-up" />} size="lg">
@@ -148,8 +148,8 @@ export default function Home() {
 					One agent, the whole finance process
 				</h2>
 				<p className="mt-3 max-w-2xl text-neutral-600">
-					Gray Office owns each workflow end to end — not just a step of it —
-					and hands back only the cases that genuinely need judgment.
+					Gray Office owns each workflow end to end, not just a step of it, and
+					hands back only the cases that genuinely need judgment.
 				</p>
 				<div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{WORKFLOWS.map((w) => (

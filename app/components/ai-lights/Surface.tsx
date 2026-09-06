@@ -1,6 +1,6 @@
 /**
  * The layered inner face of the card body. A couple of very soft greys stacked
- * on each other so a flat panel reads as having depth — plus a hairline top
+ * on each other so a flat panel reads as having depth - plus a hairline top
  * highlight. Scoped entirely by the surrounding face's background colour.
  */
 export function Surface({ dark }: { dark: boolean }) {
