@@ -167,26 +167,22 @@ export function ChatWidget() {
 				aria-label={open ? "Close assistant" : "Open assistant"}
 				aria-expanded={open}
 				className={cn(
-					"absolute bottom-5 right-5 z-50 grid size-14 place-items-center rounded-full bg-brand text-white shadow-lg shadow-brand/30",
-					"transition-transform duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-105 active:scale-95 motion-reduce:transition-none",
+					"absolute bottom-5 right-5 z-50 grid size-14 place-items-center rounded-full bg-brand text-white shadow-lg shadow-brand/30 will-change-transform",
+					"transition-[scale] duration-200 ease-out hover:scale-105 active:scale-95 motion-reduce:transition-none",
 				)}
 			>
 				<span
 					className={cn(
-						"absolute transition-all duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-						open
-							? "rotate-90 scale-0 opacity-0"
-							: "rotate-0 scale-100 opacity-100",
+						"absolute inset-0 grid place-items-center transition-[opacity,rotate] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform motion-reduce:transition-none",
+						open ? "rotate-45 opacity-0" : "rotate-0 opacity-100",
 					)}
 				>
-					<ChatBubbleIcon className="size-7 text-white" />
+					<ChatBubbleIcon className="size-6 text-white" />
 				</span>
 				<span
 					className={cn(
-						"absolute transition-all duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
-						open
-							? "rotate-0 scale-100 opacity-100"
-							: "-rotate-90 scale-0 opacity-0",
+						"absolute inset-0 grid place-items-center transition-[opacity,rotate] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform motion-reduce:transition-none",
+						open ? "rotate-0 opacity-100" : "-rotate-45 opacity-0",
 					)}
 				>
 					<X className="size-6" />
