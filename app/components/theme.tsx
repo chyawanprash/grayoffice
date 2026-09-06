@@ -7,7 +7,7 @@ import {
 	useState,
 	type ReactNode,
 } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 
 export type Theme = "dark" | "light" | "system";
 
@@ -17,10 +17,13 @@ export const THEME_STORAGE_KEY = "grayoffice-theme";
  * Inline, render-blocking script. Runs in <head> before first paint so the
  * correct `.dark` / `.light` class is on <html> and there is no flash of the
  * wrong theme (and no hydration mismatch).
+ *
+ * Default is LIGHT and the OS preference is ignored — dark only when the user
+ * has explicitly toggled it (stored as "dark").
  */
 export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(
 	THEME_STORAGE_KEY,
-)};var t=localStorage.getItem(k)||'system';var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=t==='dark'||(t!=='light'&&m);var e=document.documentElement;e.classList.remove('light','dark');e.classList.add(d?'dark':'light');e.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
+)};var d=localStorage.getItem(k)==='dark';var e=document.documentElement;e.classList.remove('light','dark');e.classList.add(d?'dark':'light');e.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
 
 type ThemeProviderState = {
 	theme: Theme;
@@ -30,13 +33,6 @@ type ThemeProviderState = {
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState | null>(null);
-
-function getSystemTheme(): "dark" | "light" {
-	if (typeof window === "undefined") return "light";
-	return window.matchMedia("(prefers-color-scheme: dark)").matches
-		? "dark"
-		: "light";
-}
 
 function applyTheme(theme: "dark" | "light") {
 	if (typeof document === "undefined") return;
@@ -48,7 +44,7 @@ function applyTheme(theme: "dark" | "light") {
 
 export function ThemeProvider({
 	children,
-	defaultTheme = "system",
+	defaultTheme = "light",
 	storageKey = THEME_STORAGE_KEY,
 }: {
 	children: ReactNode;
@@ -59,19 +55,12 @@ export function ThemeProvider({
 		if (typeof localStorage === "undefined") return defaultTheme;
 		return (localStorage.getItem(storageKey) as Theme | null) ?? defaultTheme;
 	});
-	const [systemTheme, setSystemTheme] = useState<"dark" | "light">(getSystemTheme);
-	const resolvedTheme = theme === "system" ? systemTheme : theme;
+	// Light by default, OS preference ignored — dark only when explicitly chosen.
+	const resolvedTheme: "dark" | "light" = theme === "dark" ? "dark" : "light";
 
 	useEffect(() => {
 		applyTheme(resolvedTheme);
 	}, [resolvedTheme]);
-
-	useEffect(() => {
-		const media = window.matchMedia("(prefers-color-scheme: dark)");
-		const onChange = () => setSystemTheme(getSystemTheme());
-		media.addEventListener("change", onChange);
-		return () => media.removeEventListener("change", onChange);
-	}, []);
 
 	const setTheme = useCallback(
 		(next: Theme) => {
@@ -135,35 +124,21 @@ export function useIsDark(): boolean | null {
 	return dark;
 }
 
-/**
- * Icon button that flips light <-> dark. Drop it into any header / nav.
- * `cycle` also exposes "system" as a third state.
- */
+/** Icon button that flips light <-> dark (light is the default). */
 export function ThemeToggle({
 	className = "",
-	cycle = false,
 	bordered = true,
 }: {
 	className?: string;
-	cycle?: boolean;
 	bordered?: boolean;
 }) {
-	const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
+	const { resolvedTheme, toggleTheme } = useTheme();
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => setMounted(true), []);
 
-	const onClick = () => {
-		if (!cycle) return toggleTheme();
-		setTheme(
-			theme === "light" ? "dark" : theme === "dark" ? "system" : "light",
-		);
-	};
-
 	// Until mounted, render a stable placeholder to avoid hydration mismatch.
 	const icon = !mounted ? (
-		<Sun className="size-4" />
-	) : cycle && theme === "system" ? (
-		<Monitor className="size-4" />
+		<Moon className="size-4" />
 	) : resolvedTheme === "dark" ? (
 		<Sun className="size-4" />
 	) : (
@@ -172,16 +147,14 @@ export function ThemeToggle({
 
 	const label = !mounted
 		? "Toggle theme"
-		: cycle
-			? `Theme: ${theme}`
-			: resolvedTheme === "dark"
-				? "Switch to light theme"
-				: "Switch to dark theme";
+		: resolvedTheme === "dark"
+			? "Switch to light theme"
+			: "Switch to dark theme";
 
 	return (
 		<button
 			type="button"
-			onClick={onClick}
+			onClick={toggleTheme}
 			aria-label={label}
 			title={label}
 			className={

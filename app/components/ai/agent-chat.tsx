@@ -16,7 +16,18 @@ const SUGGESTIONS = [
 	"Any exceptions in the audit log?",
 ];
 
-const CONFIRM_TOOLS = ["bankCredit", "bankDebit", "bankTransfer", "bankSubscribe", "refundPayment"];
+const CONFIRM_TOOLS = [
+	"bankCredit",
+	"bankDebit",
+	"bankTransfer",
+	"bankSubscribe",
+	"refundPayment",
+	"createInvoice",
+	"markInvoicePaid",
+	"createJournalEntry",
+	"postJournalEntry",
+	"reverseAccrual",
+];
 
 function fileToPart(f: File): Promise<{ type: "file"; mediaType: string; filename: string; url: string }> {
 	return new Promise((resolve, reject) => {

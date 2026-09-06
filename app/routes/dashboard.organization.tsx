@@ -12,6 +12,7 @@ import {
 	setAgentModel,
 } from "~/lib/org.server";
 import { AGENT_MODELS, availableAgentModels } from "~/lib/agent.server";
+import { setOrgHome } from "~/lib/ledger.server";
 
 export function meta() {
 	return [{ title: "Organization | Gray Office" }];
@@ -51,6 +52,17 @@ export async function action({ request, context }: Route.ActionArgs) {
 		const model = String(form.get("model") ?? "");
 		await setAgentModel(env.DB, orgId, AGENT_MODELS.some((m) => m.id === model) ? model : null);
 		return { ok: "model" as const };
+	}
+
+	if (intent === "jurisdiction") {
+		if (role === "member") return { error: "Only an owner or admin can set this." };
+		await setOrgHome(
+			env.DB,
+			orgId,
+			String(form.get("home_state") ?? "").trim() || null,
+			String(form.get("home_country") ?? "").trim() || null,
+		);
+		return { ok: "jurisdiction" as const };
 	}
 
 	if (intent === "rename") {
@@ -125,6 +137,37 @@ export default function Organization({ loaderData, actionData }: Route.Component
 							Workers AI fallback until one is added.
 						</p>
 					)}
+				</section>
+
+				<section className={card}>
+					<h2 className="text-lg font-medium">Home jurisdiction</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Your own state and country — the seller side when the assistant works
+						out GST place of supply.
+					</p>
+					<Form method="post" className="mt-3 flex flex-wrap items-end gap-2">
+						<input type="hidden" name="intent" value="jurisdiction" />
+						<input
+							name="home_state"
+							defaultValue={org.home_state ?? ""}
+							placeholder="State (e.g. Karnataka)"
+							disabled={role === "member"}
+							className="h-9 w-56 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring disabled:opacity-60"
+						/>
+						<input
+							name="home_country"
+							defaultValue={org.home_country ?? "IN"}
+							placeholder="Country"
+							disabled={role === "member"}
+							className="h-9 w-24 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring disabled:opacity-60"
+						/>
+						{role !== "member" && (
+							<Button type="submit" size="sm" variant="outline" disabled={busy}>Save</Button>
+						)}
+						{actionData && "ok" in actionData && actionData.ok === "jurisdiction" && (
+							<span className="pb-1.5 text-sm text-[var(--dashboard-completed)]">Saved.</span>
+						)}
+					</Form>
 				</section>
 
 				<section className={card}>

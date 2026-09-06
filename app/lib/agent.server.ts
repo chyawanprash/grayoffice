@@ -9,6 +9,28 @@ import { listIntegrations, recentEvents, fetchResource, createRefund, PROVIDER_I
 import { getOrgBank, getBankSummary, bankAction } from "./bank.server";
 import { searchKb } from "./kb.server";
 import { getExtract, listDocumentsForAgent, queueExtraction } from "./docs.server";
+import {
+	computeGst,
+	createInvoice,
+	listCompanies,
+	upsertCompany,
+	getInvoice,
+	listInvoices,
+	setInvoiceStatus,
+	postEntry,
+	listJournalEntries,
+	flagEntry,
+	postJournalEntry,
+	addAccrual,
+	listAccruals,
+	reverseAccrual,
+	monthEndClose,
+	reconcileBank,
+	cashReport,
+	transactionsByJurisdiction,
+	processInvoiceDocument,
+	setOrgHome,
+} from "./ledger.server";
 
 /**
  * The Gray Office finance agent. The model is per-organization (chosen on the
@@ -94,6 +116,19 @@ at data you can look up.
   "our" setup. Call saveMemory the moment the user states such a fact.
 - Move money — bankCredit, bankDebit, bankTransfer: change the real bank
   balance. See the approval rule below.
+- Companies & invoices — listCompanies / addCompany; createInvoice against a
+  company (computes the GST split per line and posts the ledger entry —
+  approval-required); listInvoices / getInvoiceDetail / markInvoicePaid.
+  processInvoiceDocument turns an already-extracted PDF into a draft invoice
+  with duplicate + fraud checks and routes it for approval. computeGst and
+  setHomeJurisdiction help work out place of supply.
+- General ledger — createJournalEntry (approval-required; unbalanced entries
+  save as needs_review), listJournalEntries, flagJournalEntry to send one to a
+  human, postJournalEntry. Accruals: addAccrual / listAccruals / reverseAccrual.
+- Analyses — monthEndClose(period YYYY-MM), reconcileBank, cashReport,
+  transactionsByJurisdiction. Run the matching one before answering "how's the
+  close going", "what's unreconciled", "what's our cash position / 13-week
+  forecast", "break transactions down by state".
 
 ## How to work
 
@@ -113,29 +148,36 @@ at data you can look up.
 
 ## Standard plays
 
-- Month-end close: pull recent bank transactions + payment-gateway activity +
-  uploaded journal entries/statements; list what is unreconciled, what accruals
-  look missing, and which entries need a human sign-off.
-- Reconciliation: match each bank line to an invoice/PO/receipt from
-  getDocument (amount, date, counterparty, reference). Report matched,
-  partial, and unmatched, with the delta on each partial.
-- Invoice processing / 3-way match: for an invoice, find its PO and GRN in the
-  documents, compare ordered vs received vs billed quantity and price, and
-  flag every variance and any duplicate.
-- Cash report: assemble the current cash position from the bank balance plus
-  cleared/expected gateway settlements; call out large upcoming outflows.
-- GST / place of supply: from an invoice's ship-from and ship-to states, infer
-  the place of supply and split CGST / SGST / IGST; check the rate and the
-  GSTIN format; flag reverse-charge cases.
+- Close the books: monthEndClose(period). Walk the returned checklist — post
+  draft journal entries, resolve flagged ones, confirm or reverse open
+  accruals, chase overdue invoices, reconcile the bank. Post what's routine;
+  flagJournalEntry anything that needs a human's judgment, and say why.
+- Reconciliation: reconcileBank — report matched / partial (with the delta) /
+  unmatched. For unmatched lines, look for a matching invoice or propose the
+  journal entry that would clear it.
+- Invoice processing: for each unprocessed PDF, processInvoiceDocument — it
+  matches/creates the company, runs duplicate + fraud checks (round large
+  amounts, new payee + big amount, bad GSTIN), and routes it. Summarise what's
+  ready to approve vs flagged. For a PO/GRN 3-way match, pull them with
+  getDocument and compare ordered vs received vs billed.
+- Cash reports: cashReport — today's position + the 13-week forecast from open
+  AR/AP. Call out the weeks that go negative and the largest outflows.
+- Transactions by country & state: transactionsByJurisdiction — the buckets
+  plus the reconciliation line; explain any difference from the control total.
+- GST / place of supply: computeGst (or createInvoice, which does it) — intra-
+  state → CGST+SGST, inter-state / export → IGST, reverse charge → no tax on
+  the invoice. Check the rate and GSTIN format; call out reverse-charge cases.
 
-## Actions that touch money — approval required
+## Actions that create records or move money — approval required
 
-bankCredit, bankDebit, bankTransfer, bankSubscribe and refundPayment all move
-real money. NEVER call one with confirmed=true until, in this same
-conversation, the user has explicitly approved that exact action — amount,
-destination/beneficiary, gateway, reference. First reply in plain language with
-what you would do and ask them to confirm. If they say yes, then call the tool
-with confirmed=true. If anything is ambiguous, ask — do not assume.
+Money: bankCredit, bankDebit, bankTransfer, bankSubscribe, refundPayment.
+Records: createInvoice, createJournalEntry, postJournalEntry, markInvoicePaid,
+reverseAccrual. NEVER call any of these with confirmed=true until, in this same
+conversation, the user has explicitly approved that exact action. First reply
+in plain language with what you would do (the amounts, accounts, company,
+dates) and ask them to confirm. If they say yes, call it with confirmed=true.
+Read-only tools and processInvoiceDocument (which only creates a *draft*) need
+no confirmation. If anything is ambiguous, ask — do not assume.
 
 ## When to stop and escalate
 
@@ -296,6 +338,199 @@ export function createFinanceAgent(
 							: undefined,
 					};
 				},
+			}),
+
+			/* ---- companies + invoices ---- */
+			listCompanies: tool({
+				description: "List the org's customers and vendors (name, role, GSTIN, state).",
+				inputSchema: z.object({}),
+				execute: async () => ({ companies: await listCompanies(env.DB, orgId) }),
+			}),
+			addCompany: tool({
+				description: "Create (or update) a customer/vendor.",
+				inputSchema: z.object({
+					name: z.string(),
+					role: z.enum(["customer", "vendor", "both"]).optional(),
+					gstin: z.string().optional(),
+					state: z.string().optional().describe("Indian state for place of supply"),
+					country: z.string().optional(),
+					email: z.string().optional(),
+				}),
+				execute: async (c) => ({ company: await upsertCompany(env.DB, orgId, c) }),
+			}),
+			setHomeJurisdiction: tool({
+				description: "Set the org's own state/country - used as the seller side for GST place-of-supply.",
+				inputSchema: z.object({ state: z.string(), country: z.string().optional() }),
+				execute: async ({ state, country }) => {
+					await setOrgHome(env.DB, orgId, state, country ?? null);
+					return { ok: true };
+				},
+			}),
+			computeGst: tool({
+				description:
+					"Compute the GST split (CGST+SGST intra-state, IGST inter-state) for a set of lines without creating anything.",
+				inputSchema: z.object({
+					sellerState: z.string().optional(),
+					buyerState: z.string().optional(),
+					reverseCharge: z.boolean().optional(),
+					isExport: z.boolean().optional(),
+					lines: z.array(
+						z.object({
+							description: z.string(),
+							qty: z.number().optional(),
+							unit_price: z.number(),
+							gst_rate: z.number().optional().describe("percent, e.g. 18"),
+						}),
+					),
+				}),
+				execute: async ({ sellerState, buyerState, reverseCharge, isExport, lines }) =>
+					computeGst({ lines, sellerState, buyerState, reverseCharge, export_: isExport }),
+			}),
+			createInvoice: tool({
+				description:
+					"Create an invoice against a company. Computes GST per line and posts the ledger entry. `direction`: receivable = we bill a customer; payable = a bill we owe. Requires user confirmation.",
+				inputSchema: z.object({
+					confirmed: z.boolean().describe("true ONLY after the user approved this invoice"),
+					company_id: z.string().optional(),
+					company_name: z.string().optional(),
+					direction: z.enum(["receivable", "payable"]),
+					number: z.string().optional(),
+					issue_date: z.string().optional().describe("YYYY-MM-DD, defaults today"),
+					due_date: z.string().optional(),
+					reverse_charge: z.boolean().optional(),
+					isExport: z.boolean().optional(),
+					notes: z.string().optional(),
+					lines: z.array(
+						z.object({
+							description: z.string(),
+							hsn_sac: z.string().optional(),
+							qty: z.number().optional(),
+							unit_price: z.number(),
+							gst_rate: z.number().optional(),
+						}),
+					),
+				}),
+				execute: async ({ confirmed, isExport, ...input }) => {
+					if (!confirmed) return { needsConfirmation: true, proposed: { intent: "createInvoice", ...input } };
+					try {
+						return await createInvoice(env, orgId, { ...input, export: isExport });
+					} catch (err) {
+						return { error: err instanceof Error ? err.message : String(err) };
+					}
+				},
+			}),
+			listInvoices: tool({
+				description: "List invoices, optionally filtered by direction (receivable|payable) or status (draft|open|paid|void).",
+				inputSchema: z.object({ direction: z.enum(["receivable", "payable"]).optional(), status: z.string().optional() }),
+				execute: async (o) => ({ invoices: await listInvoices(env.DB, orgId, o) }),
+			}),
+			getInvoiceDetail: tool({
+				description: "Full invoice with line items and the GST breakdown.",
+				inputSchema: z.object({ id: z.string() }),
+				execute: async ({ id }) => (await getInvoice(env.DB, orgId, id)) ?? { error: "not found" },
+			}),
+			markInvoicePaid: tool({
+				description: "Mark an invoice paid (or void). Requires user confirmation.",
+				inputSchema: z.object({ confirmed: z.boolean(), id: z.string(), status: z.enum(["paid", "void", "open"]) }),
+				execute: async ({ confirmed, id, status }) => {
+					if (!confirmed) return { needsConfirmation: true, proposed: { intent: "markInvoice", id, status } };
+					await setInvoiceStatus(env.DB, orgId, id, status);
+					return { ok: true };
+				},
+			}),
+			processInvoiceDocument: tool({
+				description:
+					"Turn an already-extracted PDF (from listDocuments) into a draft invoice: matches/creates the company, runs duplicate + fraud checks, and routes it for approval.",
+				inputSchema: z.object({ docId: z.string(), direction: z.enum(["receivable", "payable"]).optional() }),
+				execute: async ({ docId, direction }) => processInvoiceDocument(env, orgId, docId, direction ?? "payable"),
+			}),
+
+			/* ---- general ledger ---- */
+			createJournalEntry: tool({
+				description:
+					"Post a journal entry. Lines each have an account and either debit_cents or credit_cents (integer paise). Unbalanced entries are saved as needs_review. Requires user confirmation.",
+				inputSchema: z.object({
+					confirmed: z.boolean(),
+					date: z.string().describe("YYYY-MM-DD"),
+					memo: z.string().optional(),
+					lines: z.array(
+						z.object({
+							account: z.string(),
+							debit_cents: z.number().int().optional(),
+							credit_cents: z.number().int().optional(),
+							memo: z.string().optional(),
+						}),
+					),
+				}),
+				execute: async ({ confirmed, ...e }) => {
+					if (!confirmed) return { needsConfirmation: true, proposed: { intent: "journalEntry", ...e } };
+					return postEntry(env, orgId, { ...e, source: "agent", status: "posted" });
+				},
+			}),
+			listJournalEntries: tool({
+				description: "List ledger entries. Filter by status (draft|posted|needs_review) or period (YYYY-MM).",
+				inputSchema: z.object({ status: z.string().optional(), period: z.string().optional() }),
+				execute: async (o) => ({ entries: await listJournalEntries(env.DB, orgId, o) }),
+			}),
+			flagJournalEntry: tool({
+				description: "Flag a journal entry as needing a human's review, with a reason.",
+				inputSchema: z.object({ id: z.string(), reason: z.string() }),
+				execute: async ({ id, reason }) => {
+					await flagEntry(env.DB, orgId, id, reason);
+					return { ok: true };
+				},
+			}),
+			postJournalEntry: tool({
+				description: "Move a draft / reviewed journal entry to posted. Requires user confirmation.",
+				inputSchema: z.object({ confirmed: z.boolean(), id: z.string() }),
+				execute: async ({ confirmed, id }) => {
+					if (!confirmed) return { needsConfirmation: true, proposed: { intent: "postEntry", id } };
+					await postJournalEntry(env.DB, orgId, id);
+					return { ok: true };
+				},
+			}),
+
+			/* ---- accruals ---- */
+			addAccrual: tool({
+				description: "Record an accrual for a period (YYYY-MM).",
+				inputSchema: z.object({ description: z.string(), amount: z.number(), period: z.string() }),
+				execute: async (a) => addAccrual(env.DB, orgId, a),
+			}),
+			listAccruals: tool({
+				description: "List accruals, optionally for one period (YYYY-MM).",
+				inputSchema: z.object({ period: z.string().optional() }),
+				execute: async ({ period }) => ({ accruals: await listAccruals(env.DB, orgId, period) }),
+			}),
+			reverseAccrual: tool({
+				description: "Mark an accrual reversed. Requires user confirmation.",
+				inputSchema: z.object({ confirmed: z.boolean(), id: z.string() }),
+				execute: async ({ confirmed, id }) => {
+					if (!confirmed) return { needsConfirmation: true, proposed: { intent: "reverseAccrual", id } };
+					await reverseAccrual(env.DB, orgId, id);
+					return { ok: true };
+				},
+			}),
+
+			/* ---- analyses ---- */
+			monthEndClose: tool({
+				description: "Run the month-end close checklist for a period (YYYY-MM): what's still open across the ledger, accruals, invoices and bank.",
+				inputSchema: z.object({ period: z.string().describe("YYYY-MM") }),
+				execute: async ({ period }) => monthEndClose(env, orgId, period),
+			}),
+			reconcileBank: tool({
+				description: "Match every bank transaction to an invoice or ledger entry; returns matched, partial (with delta) and unmatched.",
+				inputSchema: z.object({}),
+				execute: async () => reconcileBank(env, orgId),
+			}),
+			cashReport: tool({
+				description: "Current cash position plus a 13-week forecast built from open AR/AP due dates.",
+				inputSchema: z.object({}),
+				execute: async () => cashReport(env, orgId),
+			}),
+			transactionsByJurisdiction: tool({
+				description: "Every invoice bucketed by country + state (place of supply), with a reconciliation against the control total.",
+				inputSchema: z.object({}),
+				execute: async () => transactionsByJurisdiction(env, orgId),
 			}),
 
 			saveDocumentFromUrl: tool({
