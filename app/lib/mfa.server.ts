@@ -100,6 +100,21 @@ export type OtpPurpose = "mfa" | "verify" | "reset";
 const OTP_TTL_SECONDS = 10 * 60;
 const OTP_MAX_ATTEMPTS = 5;
 
+/**
+ * Dev only: keep the last plaintext code per user+purpose in memory so the
+ * verify / MFA screens can show it (no deliverable email locally). Never
+ * populated in production.
+ */
+const devCodes = new Map<string, string>();
+
+export function peekDevOtp(
+	userId: string,
+	purpose: OtpPurpose,
+): string | undefined {
+	if (import.meta.env.PROD) return undefined;
+	return devCodes.get(`${userId}:${purpose}`);
+}
+
 /** Create a 6-digit code, store its hash, and return the plaintext to email. */
 export async function createEmailOtp(
 	db: D1Database,
@@ -115,6 +130,7 @@ export async function createEmailOtp(
 		.run();
 
 	const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+	if (!import.meta.env.PROD) devCodes.set(`${userId}:${purpose}`, code);
 	await db
 		.prepare(
 			"INSERT INTO email_otps (id, user_id, purpose, code_hash, expires_at) VALUES (?, ?, ?, ?, ?)",

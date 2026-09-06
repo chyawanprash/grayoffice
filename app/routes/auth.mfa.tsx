@@ -12,6 +12,7 @@ import {
 import {
 	countRecoveryCodes,
 	createEmailOtp,
+	peekDevOtp,
 	useRecoveryCode,
 	verifyEmailOtp,
 } from "~/lib/mfa.server";
@@ -37,6 +38,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	return {
 		email: maskEmail(user.email),
 		recoveryCount: await countRecoveryCodes(DB, user.id),
+		devCode: peekDevOtp(user.id, "mfa"),
 	};
 }
 
@@ -116,6 +118,12 @@ export default function MfaChallenge({ actionData, loaderData }: Route.Component
 					{mode === "email" && `We can send a one-time code to ${loaderData.email}.`}
 					{mode === "recovery" && "Use one of the recovery codes you saved when setting up two-factor auth."}
 				</p>
+
+				{mode === "email" && loaderData.devCode && (
+					<p className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+						Dev mode — your code is <span className="font-semibold tracking-wide">{loaderData.devCode}</span>
+					</p>
+				)}
 
 				<Form method="post" className="mt-6 space-y-4" key={mode}>
 					<input type="hidden" name="intent" value={mode} />

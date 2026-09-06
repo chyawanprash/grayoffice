@@ -20,9 +20,8 @@ export async function sendEmail(
 	const from = env.RESEND_FROM ?? "Gray Office <onboarding@resend.dev>";
 
 	if (!env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith("re_your")) {
-		console.log(
-			`[email:dev] to=${msg.to} subject=${JSON.stringify(msg.subject)}\n${msg.text ?? msg.html}`,
-		);
+		// No API key: nothing is sent. OTP codes surface on the verify/MFA screen
+		// in dev (see peekDevOtp); other mail is simply skipped locally.
 		return;
 	}
 
@@ -46,11 +45,6 @@ export async function sendOtpEmail(
 	code: string,
 	purpose: OtpPurpose,
 ): Promise<void> {
-	// Local dev: always echo the code so flows work without deliverable email.
-	if (!import.meta.env.PROD) {
-		console.log(`[otp:dev] ${purpose} code for ${to} → ${code}`);
-	}
-
 	const subjects: Record<OtpPurpose, string> = {
 		mfa: `${code} is your Gray Office sign-in code`,
 		verify: `${code} — confirm your email`,

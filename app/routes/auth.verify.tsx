@@ -10,7 +10,7 @@ import {
 	getPendingVerifyUserId,
 	markEmailVerified,
 } from "~/lib/auth.server";
-import { createEmailOtp, verifyEmailOtp } from "~/lib/mfa.server";
+import { createEmailOtp, peekDevOtp, verifyEmailOtp } from "~/lib/mfa.server";
 import { sendOtpEmail } from "~/lib/email.server";
 
 export function meta() {
@@ -30,7 +30,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const user = await findUserById(DB, userId);
 	if (!user) throw redirect("/sign-in");
 	if (user.email_verified) throw redirect("/dashboard");
-	return { email: maskEmail(user.email) };
+	return { email: maskEmail(user.email), devCode: peekDevOtp(userId, "verify") };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -92,6 +92,12 @@ export default function VerifyEmail({ actionData, loaderData }: Route.ComponentP
 					We sent a 6-digit code to {loaderData.email}. Enter it below to finish
 					setting up your account.
 				</p>
+
+				{loaderData.devCode && (
+					<p className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+						Dev mode — your code is <span className="font-semibold tracking-wide">{loaderData.devCode}</span>
+					</p>
+				)}
 
 				<Form method="post" className="mt-6 space-y-4">
 					<input type="hidden" name="intent" value="verify" />
