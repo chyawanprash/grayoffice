@@ -2,25 +2,28 @@ import { Link } from "react-router";
 import type { Route } from "./+types/dashboard.recents";
 import { requireOrg } from "~/lib/org.server";
 import { listInvoices } from "~/lib/ledger.server";
+import { listInventory } from "~/lib/inventory.server";
 import { getOrgBank, getBankSummary } from "~/lib/bank.server";
 import { formatMoney } from "~/lib/money";
+import { Tag, type TagColor } from "~/components/ui/tag";
 
 export function meta() {
 	return [{ title: "Recents | Gray Office" }];
 }
 
-type Filter = "all" | "sales" | "purchases" | "bank";
+type Filter = "all" | "sales" | "purchases" | "inventory" | "bank";
 const FILTERS: { key: Filter; label: string }[] = [
 	{ key: "all", label: "Everything" },
 	{ key: "sales", label: "Sales" },
 	{ key: "purchases", label: "Purchases" },
+	{ key: "inventory", label: "Inventory" },
 	{ key: "bank", label: "Bank" },
 ];
 
 type Row = {
 	date: string;
 	kind: string;
-	group: "sale" | "purchase" | "bank";
+	group: "sale" | "purchase" | "inventory" | "bank";
 	desc: string;
 	inflow: number;
 	outflow: number;
@@ -33,8 +36,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	const { orgId, org } = await requireOrg(request, env);
 	const filter = (new URL(request.url).searchParams.get("type") ?? "all") as Filter;
 
-	const [invoices, bankRow] = await Promise.all([
+	const [invoices, inventory, bankRow] = await Promise.all([
 		listInvoices(env.DB, orgId, { limit: 500 }),
+		listInventory(env.DB, orgId),
 		getOrgBank(env.DB, orgId),
 	]);
 	const bank = bankRow ? await getBankSummary(bankRow).catch(() => null) : null;
@@ -53,6 +57,19 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 			status: i.status,
 		});
 	}
+	for (const it of inventory) {
+		const cost = (it.amount_cents / 100) * (it.quantity || 1);
+		rows.push({
+			date: it.start_date,
+			kind: it.kind === "purchase" ? `${it.category} purchase` : `${it.category} subscription`,
+			group: "inventory",
+			desc: `${it.name}${it.vendor ? ` · ${it.vendor}` : ""}${it.quantity > 1 ? ` ×${it.quantity}` : ""}`,
+			inflow: 0,
+			outflow: cost,
+			balance: null,
+			status: it.kind === "purchase" ? "one-off" : it.cadence,
+		});
+	}
 	for (const t of bank?.transactions ?? []) {
 		rows.push({
 			date: t.created_at,
@@ -67,9 +84,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 	}
 	rows.sort((a, b) => b.date.localeCompare(a.date));
 
-	const shown = rows
-		.filter((r) => filter === "all" || r.group === filter || (filter === "bank" && r.group === "bank"))
-		.slice(0, 300);
+	const shown = rows.filter((r) => filter === "all" || r.group === filter).slice(0, 300);
 
 	const month = new Date().toISOString().slice(0, 7);
 	const thisMonth = rows.filter((r) => r.date.slice(0, 7) === month);
@@ -82,7 +97,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		summary: {
 			bankBalance: bank?.account.balance ?? null,
 			salesMonth: sum(thisMonth.filter((r) => r.group === "sale"), "inflow"),
-			purchasesMonth: sum(thisMonth.filter((r) => r.group === "purchase"), "outflow"),
+			spendMonth: sum(thisMonth.filter((r) => r.group === "purchase" || r.group === "inventory"), "outflow"),
 			bankInMonth: sum(thisMonth.filter((r) => r.group === "bank"), "inflow"),
 			bankOutMonth: sum(thisMonth.filter((r) => r.group === "bank"), "outflow"),
 		},
@@ -90,6 +105,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 const statCard = "rounded-xl bg-card p-4";
+
+function typeColor(r: { group: string; inflow: number }): TagColor {
+	if (r.group === "sale") return "green";
+	if (r.group === "purchase") return "amber";
+	if (r.group === "inventory") return "purple";
+	return r.inflow ? "blue" : "red"; // bank
+}
 
 export default function Recents({ loaderData }: Route.ComponentProps) {
 	const { currency, filter, rows, summary } = loaderData;
@@ -115,7 +137,7 @@ export default function Recents({ loaderData }: Route.ComponentProps) {
 					</div>
 				</div>
 				<Stat label="Sales this month" value={fmt(summary.salesMonth)} tone="up" />
-				<Stat label="Purchases this month" value={fmt(summary.purchasesMonth)} tone="down" />
+				<Stat label="Spend this month" value={fmt(summary.spendMonth)} tone="down" />
 				<Stat
 					label="Net bank flow (mo)"
 					value={fmt(summary.bankInMonth - summary.bankOutMonth)}
@@ -157,8 +179,8 @@ export default function Recents({ loaderData }: Route.ComponentProps) {
 								<tr key={idx} className="group [&>td]:border-b [&>td]:border-border/60 [&>td]:px-3 [&>td]:py-2.5 hover:[&>td]:bg-muted/30">
 									<td className="text-center text-xs tabular-nums text-muted-foreground">{idx + 1}</td>
 									<td className="tabular-nums text-muted-foreground">{r.date.slice(0, 10)}</td>
-									<td className="sticky left-0 z-10 bg-card font-medium text-foreground group-hover:bg-muted/30">
-										{r.kind}
+									<td className="sticky left-0 z-10 bg-card group-hover:bg-muted/30">
+										<Tag color={typeColor(r)}>{r.kind}</Tag>
 									</td>
 									<td className="text-muted-foreground">{r.desc}</td>
 									<td className="text-right tabular-nums text-[var(--dashboard-completed)]">

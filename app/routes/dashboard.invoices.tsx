@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { requireOrg } from "~/lib/org.server";
 import { getInvoice, listInvoices, setInvoiceStatus } from "~/lib/ledger.server";
 import { formatMoney } from "~/lib/money";
+import { Tag, type TagColor } from "~/components/ui/tag";
 
 export function meta() {
 	return [{ title: "Invoices | Gray Office" }];
@@ -70,11 +71,11 @@ export async function action({ request, context }: Route.ActionArgs) {
 	return { ok: true };
 }
 
-const badge: Record<string, string> = {
-	open: "bg-[color-mix(in_oklch,var(--dashboard-no-show)_16%,transparent)] text-[var(--dashboard-no-show)]",
-	paid: "bg-[color-mix(in_oklch,var(--dashboard-completed)_16%,transparent)] text-[var(--dashboard-completed)]",
-	draft: "bg-muted text-muted-foreground",
-	void: "bg-[color-mix(in_oklch,var(--destructive)_16%,transparent)] text-destructive",
+const statusColor: Record<string, TagColor> = {
+	open: "amber",
+	paid: "green",
+	draft: "gray",
+	void: "red",
 };
 
 export default function Invoices({ loaderData }: Route.ComponentProps) {
@@ -133,6 +134,7 @@ export default function Invoices({ loaderData }: Route.ComponentProps) {
 							<tr className="[&>th]:border-b [&>th]:border-border [&>th]:bg-muted/40 [&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:text-xs [&>th]:font-medium [&>th]:text-muted-foreground">
 								<th className="w-10 text-center">#</th>
 								<th className="sticky left-0 z-10 bg-muted/40">Number</th>
+								<th>Type</th>
 								<th>Company</th>
 								<th>Issued</th>
 								<th>Place of supply</th>
@@ -153,7 +155,11 @@ export default function Invoices({ loaderData }: Route.ComponentProps) {
 											<td className="text-center text-xs tabular-nums text-muted-foreground">{idx + 1}</td>
 											<td className="sticky left-0 z-10 bg-card font-medium text-foreground group-hover:bg-muted/30">
 												{i.number}
-												<span className="ml-2 text-[10px] uppercase text-muted-foreground">{i.direction === "receivable" ? "sale" : "purchase"}</span>
+											</td>
+											<td>
+												<Tag color={i.direction === "receivable" ? "green" : "amber"}>
+													{i.direction === "receivable" ? "sale" : "purchase"}
+												</Tag>
 											</td>
 											<td className="text-foreground">{i.company}</td>
 											<td className="text-muted-foreground">{i.issue_date}</td>
@@ -161,12 +167,12 @@ export default function Invoices({ loaderData }: Route.ComponentProps) {
 											<td className="text-right tabular-nums text-muted-foreground">{fmt(i.tax)}</td>
 											<td className="text-right font-medium tabular-nums text-foreground">{fmt(i.total)}</td>
 											<td>
-												<span className={`rounded-md px-2 py-0.5 text-xs font-medium ${badge[i.status] ?? ""}`}>{i.status}</span>
+												<Tag color={statusColor[i.status] ?? "gray"}>{i.status}</Tag>
 											</td>
 										</tr>
 										{isOpen && (
 											<tr>
-												<td colSpan={8} className="border-b border-border/60 bg-muted/20 px-4 py-3">
+												<td colSpan={9} className="border-b border-border/60 bg-muted/20 px-4 py-3">
 													{detail?.id === i.id ? (
 														<InvoiceDetail detail={detail} status={i.status} busy={busy} fmt={fmt} />
 													) : (
@@ -182,7 +188,7 @@ export default function Invoices({ loaderData }: Route.ComponentProps) {
 							})}
 							{rows.length === 0 && (
 								<tr>
-									<td colSpan={8} className="border-b border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
+									<td colSpan={9} className="border-b border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
 										Nothing here yet.
 									</td>
 								</tr>
@@ -192,7 +198,7 @@ export default function Invoices({ loaderData }: Route.ComponentProps) {
 							<tr className="[&>td]:bg-muted/40 [&>td]:px-3 [&>td]:py-2.5 [&>td]:font-medium">
 								<td />
 								<td className="sticky left-0 z-10 bg-muted/40 text-muted-foreground">{rows.length} invoices</td>
-								<td /><td /><td /><td />
+								<td /><td /><td /><td /><td />
 								<td className="text-right tabular-nums text-foreground">{fmt(total)}</td>
 								<td />
 							</tr>
